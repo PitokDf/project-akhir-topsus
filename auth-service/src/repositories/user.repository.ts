@@ -19,7 +19,7 @@ export class UserRepository {
         })
     }
 
-    static async create(data: Pick<User, 'name' | 'email' | 'password'>): Promise<User> {
+    static async create(data: Pick<User, 'name' | 'email' | 'password'| 'role'>): Promise<User> {
         return db.user.create({
             data,
         });

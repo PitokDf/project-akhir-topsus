@@ -6,11 +6,17 @@ import { LoginUserInput, RegisterUserInput } from "../schemas/auth.schema";
 import { BcryptUtil, JwtUtil } from "../utils";
 
 export async function registerService(data: RegisterUserInput) {
-    data.password = (await BcryptUtil.hash(data.password))!
+    const hashedPassword = (await BcryptUtil.hash(data.password))!
 
-    const user = await UserRepository.create(data)
+    const user = await UserRepository.create({
+        name: data.name,
+        email: data.email,
+        password: hashedPassword,
+        role: data.role || 'CASHIER',
+    })
 
-    return user
+    const { password, ...safeUser } = user;
+    return safeUser
 }
 
 export async function loginService(data: LoginUserInput) {

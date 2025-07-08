@@ -1,5 +1,7 @@
 import z from "zod";
 
+const validRoles = ["CASHIER", "ADMIN"] as const;
+
 export const registerUserSchema = z.object({
     name: z
         .string()
@@ -16,6 +18,12 @@ export const registerUserSchema = z.object({
         .string()
         .nonempty({ message: "Password tidak boleh kosong" })
         .min(6, { message: "Password minimal 6 karakter" }),
+    role: z
+        .enum(validRoles, {
+            errorMap: () => ({ message: "Role harus salah satu dari CASHIER atau ADMIN" })
+        })
+        .optional()
+        .default("CASHIER"),
 });
 
 export type RegisterUserInput = z.infer<typeof registerUserSchema>;
