@@ -1,0 +1,16 @@
+{
+    "name": "migration-service",
+    "version": "1.0.0",
+    "description": "Service for managing Prisma database migrations",
+    "main": "index.js",
+    "scripts": {
+        "migrate:dev": "npx prisma migrate dev",
+        "migrate:deploy": "npx prisma migrate deploy",
+        "generate": "npx prisma generate"
+    },
+    "dependencies": {
+        "@prisma/client": "^5.22.0",
+        "dotenv": "^16.0.3",
+        "prisma": "^5"
+    }
+}

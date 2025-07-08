@@ -1,0 +1,180 @@
+version: "3.8"
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80" # Port 80 untuk akses web standar
+      - "443:443" # Port 443 untuk HTTPS (jika nanti dikonfigurasi)
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # Tambahkan volume untuk sertifikat SSL di produksi jika menggunakan HTTPS
+      # - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      frontend:
+        condition: service_started # Nginx bisa mulai meski frontend masih loading
+      auth-service:
+        condition: service_started
+      menu-service:
+        condition: service_started
+      transaction-service:
+        condition: service_started
+      report-service:
+        condition: service_started
+    networks:
+      - cashiersystem-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    # Port ini hanya untuk debugging atau akses langsung saat dev,
+    # di produksi akan diakses via Nginx.
+    # - "3000:3000"
+    environment:
+      # URL ini akan diresolve di dalam network Docker ke nama service Nginx
+      - NEXT_PUBLIC_API_BASE_URL=http://nginx
+      - NODE_ENV=production # Penting untuk build Next.js
+    depends_on:
+      # Frontend bergantung pada auth-service secara tidak langsung melalui Nginx,
+      # tapi bisa juga langsung bergantung untuk memastikan auth-service hidup sebelum frontend mencoba connect
+      auth-service:
+        condition: service_started
+    volumes:
+      # Mount volume untuk development, bisa dihapus/diubah di produksi
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - cashiersystem-network
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    # Port ini hanya untuk debugging atau akses langsung saat dev
+    # - "3001:3001"
+    environment:
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=${AUTH_SERVICE_DB_URL}
+    depends_on:
+      db:
+        condition: service_healthy # Pastikan DB siap
+      migration-service:
+        condition: service_completed_successfully # Pastikan migrasi selesai sebelum service ini jalan
+    volumes:
+      - ./auth-service:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./auth-service/prisma:/usr/src/app/prisma # Pastikan folder prisma juga di-mount
+    networks:
+      - cashiersystem-network
+
+  menu-service:
+    build:
+      context: ./menu-service
+      dockerfile: Dockerfile
+    # - "3002:3002"
+    environment:
+      - PORT=3002
+      - DATABASE_URL=${MENU_SERVICE_DB_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      migration-service:
+        condition: service_completed_successfully
+    volumes:
+      - ./menu-service:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./menu-service/prisma:/usr/src/app/prisma
+    networks:
+      - cashiersystem-network
+
+  transaction-service:
+    build:
+      context: ./transaction-service
+      dockerfile: Dockerfile
+    # - "3003:3003"
+    environment:
+      - PORT=3003
+      - DATABASE_URL=${TRANSACTION_SERVICE_DB_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      migration-service:
+        condition: service_completed_successfully
+    volumes:
+      - ./transaction-service:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./transaction-service/prisma:/usr/src/app/prisma
+    networks:
+      - cashiersystem-network
+
+  report-service:
+    build:
+      context: ./report-service
+      dockerfile: Dockerfile
+    # - "3004:3004"
+    environment:
+      - PORT=3004
+      - DATABASE_URL=${REPORT_SERVICE_DB_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      migration-service:
+        condition: service_completed_successfully
+    volumes:
+      - ./report-service:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./report-service/prisma:/usr/src/app/prisma
+    networks:
+      - cashiersystem-network
+
+  db:
+    image: postgres:14-alpine
+    container_name: postgres_db
+    restart: unless-stopped # Penting untuk produksi, agar restart jika crash
+    environment:
+      POSTGRES_DB: maindb
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Volume persisten untuk data DB
+      # init.sql dihapus karena migrasi ditangani oleh migration-service
+    ports:
+      - "5432:5432" # Hanya untuk akses lokal/debugging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s # Beri waktu lebih lama untuk DB start up pertama kali
+    networks:
+      - cashiersystem-network
+
+  migration-service:
+    build:
+      context: ./migration-service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=${MAIN_DB_URL}
+    depends_on:
+      db:
+        condition: service_healthy # Pastikan DB siap sebelum migrasi
+    # Jalankan migrasi dan keluar. Docker Compose akan menandai service ini "completed successfully"
+    command: ["npx", "prisma", "migrate", "deploy"]
+    volumes:
+      - ./migration-service:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./migration-service/prisma:/usr/src/app/prisma # Penting: Pastikan folder prisma/migrations di-mount
+    networks:
+      - cashiersystem-network
+
+volumes:
+  postgres_data: # Definisi volume persisten
+
+networks:
+  cashiersystem-network:
+    driver: bridge

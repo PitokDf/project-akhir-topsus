@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  email String @unique // Cukup email untuk laporan
+  role  String
+
+  transactions Transaction[]
+
+  @@map("users")
+}
+
+// Menu model untuk mendapatkan informasi menu di laporan
+model Menu {
+  id               Int               @id @default(autoincrement())
+  name             String            @unique
+  price            Float
+  transactionItems TransactionItem[]
+
+  @@map("menus")
+}
+
+model Transaction {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  transactionDate DateTime @default(now()) @map("transaction_date")
+  totalAmount     Float
+  paymentMethod   String   @map("payment_method")
+  status          String
+
+  items TransactionItem[]
+
+  @@map("transactions")
+}
+
+model TransactionItem {
+  id            Int         @id @default(autoincrement())
+  transactionId Int         @map("transaction_id")
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  menuId        Int         @map("menu_id")
+  menu          Menu        @relation(fields: [menuId], references: [id])
+  quantity      Int
+  priceAtSale   Float       @map("price_at_sale")
+  itemTotal     Float       @map("item_total")
+
+  @@map("transaction_items")
+}
