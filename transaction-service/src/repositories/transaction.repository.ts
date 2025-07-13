@@ -45,9 +45,9 @@ export const createTransaction = async (data: TransactionData) => {
     });
 };
 
-export const updateTransactionStatus = async (id: number, status: string) => {
+export const updateTransactionStatus = async (id: string, status: string) => {
     return prisma.transaction.update({
-        where: { id },
+        where: { id: parseInt(id, 10) },
         data: { status },
     });
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
 import { AuthGuard } from '@/components/layout/auth-guard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

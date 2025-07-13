@@ -12,3 +12,15 @@ export const createTransactionSchema = z.object({
 });
 
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
+
+export const updateTransactionStatusSchema = z.object({
+    status: z.enum([
+        'PENDING',
+        'SUCCESS',
+        'CANCELLED',
+        'FAILED',
+        'EXPIRED',
+    ]),
+});
+
+export type UpdateTransactionStatusInput = z.infer<typeof updateTransactionStatusSchema>;

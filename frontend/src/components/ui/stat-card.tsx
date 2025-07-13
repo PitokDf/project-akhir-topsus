@@ -18,7 +18,7 @@ export const StatCard = ({ icon: Icon, title, value, trend, trendColor, note }: 
                     <p className="text-sm text-gray-600">{title}</p>
                     <p className="text-2xl font-bold">{value}</p>
                     <div className={`flex items-center text-sm ${trendColor} mt-1`}>
-                        {trend && trend.startsWith('+') ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+                        {trend && (trend.startsWith('+') ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />)}
                         {trend && `${trend} dari kemarin`}
                     </div>
                     {note && <p className="text-xs text-yellow-600 mt-1">{note}</p>}

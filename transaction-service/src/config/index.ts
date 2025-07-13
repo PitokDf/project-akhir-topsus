@@ -10,7 +10,7 @@ export const config = {
     JWT_SECRET: process.env.JWT_SECRET || "rahasia-123-!@#",
     SERVICE: process.env.SERVICE_NAME || "service-1",
     isProduction: process.env.NODE_ENV !== "development",
-
+    RABBITMQ_URL: process.env.RABBITMQ_URL || "",
     // rate limit
     rateLimit: {
         WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "90000", 10),

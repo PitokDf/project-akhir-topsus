@@ -9,7 +9,17 @@ import { errorHandler, notFound } from "./middleware/error.middleware"
 import { App } from "./constants/app"
 import apiRouter from "./routes/index.routes"
 import morgan from "morgan"
+import http from "http"
+import { Server } from "socket.io"
+
 const app = express()
+const server = http.createServer(app)
+export const io = new Server(server, {
+    cors: {
+        origin: config.NODE_ENV === "production" ? config.CLIENT_URL : "*",
+        methods: ["GET", "POST"],
+    },
+})
 
 // Helmet untuk mengatur berbagai header HTTP guna melindungi aplikasi dari kerentanan web yang umum.
 app.use(helmet({
@@ -24,11 +34,10 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false
 }))
 
-// Konfigurasi CORS - Menangani Berbagi Sumber Daya Lintas-Origin
 app.use(cors({
     origin: config.NODE_ENV === "production" ? config.CLIENT_URL : "*",
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Metode HTTP yang diizinkan
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: config.NODE_ENV === "production"
         ? ['Content-Type', 'Authorization', 'X-Requested-With']
         : ['Content-Type', 'Authorization', 'X-Requested-With', 'ngrok-skip-browser-warning'],
@@ -47,8 +56,16 @@ app.use(requestLogger)
 
 // Middleware logging permintaan (Morgan)
 if (config.NODE_ENV === "development") {
-    app.use(morgan('dev')); // Output ringkas dengan warna berdasarkan status respons untuk development
+    app.use(morgan('dev'));
 }
+
+io.on("connection", (socket) => {
+    console.log("a user connected")
+
+    socket.on("disconnect", () => {
+        console.log("user disconnected")
+    })
+})
 
 app.get("/", (req, res) => {
     res.status(200).json({
@@ -61,4 +78,4 @@ app.use(App.API_PREFIX, apiRouter)
 app.use(notFound)
 app.use(errorHandler)
 
-export default app
+export default server

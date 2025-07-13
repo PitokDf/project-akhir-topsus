@@ -13,6 +13,9 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AuthService } from "@/lib/auth";
 import { CreateTransactionRequest, CreateTransactionResponse } from "@/lib/types";
 import Image from "next/image";
+import { transactionService } from "@/lib/service/transaction";
+import { io } from "socket.io-client";
+import { toast } from "sonner";
 
 interface PaymentModalProps {
   open: boolean;
@@ -28,8 +31,46 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
   const [step, setStep] = useState<PaymentStep>('method-selection');
   const [loading, setLoading] = useState(false);
   const [qrisUrl, setQrisUrl] = useState<string>('');
-  const [transactionId, setTransactionId] = useState<number | null>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [isCancelModalOpen, setCancelModalOpen] = useState<boolean>(false);
+  const [currentTransactionId, setCurrentTransactionId] = useState<string | null>(null);
+
+  const handleCancelTransaction = async (transactionId: string) => {
+    setLoading(true);
+    try {
+      await transactionService.cancelTransaction(transactionId);
+      toast.success("Transaksi berhasil dibatalkan.");
+      return true;
+    } catch (error) {
+      console.error('Failed to cancel transaction:', error);
+      toast.error("Gagal membatalkan transaksi.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Don't establish socket connection if modal is not open
+    if (!open) return;
+
+    const socket = io(process.env.NEXT_PUBLIC_TRANSACTION_SERVICE_URL || 'http://localhost:3003');
+
+    socket.on('connect', () => {
+      console.log('Connected to transaction service socket');
+    });
+
+    socket.on('transaction:update', (transaction) => {
+
+      if (transaction.status === "SUCCESS") {
+        setStep('success');
+      }
+    });
+
+    return () => {
+      console.log('Disconnecting from transaction service socket');
+      socket.disconnect();
+    };
+  }, [open]);
 
   const totalAmount = getTotalAmount();
   const cashReceivedNum = parseFloat(cashReceived) || 0;
@@ -43,126 +84,95 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
     }).format(price);
   };
 
-  const resetModal = () => {
+  const resetModalState = () => {
     setStep('method-selection');
     setPaymentMethod('cash');
     setCashReceived('');
     setQrisUrl('');
-    setTransactionId(null);
     setLoading(false);
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
+    setCancelModalOpen(false);
+    setCurrentTransactionId(null);
   };
 
-  const handleCloseModal = () => {
-    resetModal();
+  const handleConfirmClose = () => {
+    resetModalState();
     onOpenChange(false);
+  };
+
+  const handleAttemptClose = () => {
+    // If QRIS is displayed, show a confirmation dialog before closing.
+    // Otherwise, allow closing.
+    if (step === 'qris-display' || step === 'method-selection') {
+      setCancelModalOpen(true);
+    } else {
+      handleConfirmClose();
+    }
   };
 
   const createTransaction = async (paymentType: 'cash' | 'qris') => {
     const user = AuthService.getCurrentUser();
-    if (!user) return null;
-
-    const transactionData: CreateTransactionRequest = {
-      items: items.map(item => ({
-        menuId: item.menu.id,
-        quantity: item.quantity,
-        priceAtSale: item.menu.price,
-      })),
-      totalAmount,
-      paymentMethod: paymentType,
-      userId: user.id,
+    if (!user) {
+      toast.error("User not found. Please log in again.");
+      return null;
     };
-
+    setLoading(true);
     try {
-      const response = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transactionData),
-      });
+      const transactionData: CreateTransactionRequest = {
+        items: items.map(item => ({
+          menuId: item.menu.id,
+          quantity: item.quantity,
+        })),
+        paymentMethod: paymentType,
+        userId: user.id,
+      };
 
-      if (!response.ok) throw new Error('Failed to create transaction');
+      const response = await transactionService.createTransaction(transactionData);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to create transaction');
+      }
 
-      const result: CreateTransactionResponse = await response.json();
-      return result;
+      const res = response as CreateTransactionResponse;
+      if (res.success && res.data.id) {
+        setCurrentTransactionId(res.data.id.toString());
+      }
+      return res;
     } catch (error) {
       console.error('Transaction creation failed:', error);
+      toast.error(error instanceof Error ? error.message : 'An unknown error occurred.');
       return null;
-    }
-  };
-
-  const checkPaymentStatus = async (id: number) => {
-    try {
-      const response = await fetch(`/api/transactions/${id}/status`);
-      if (!response.ok) throw new Error('Failed to check status');
-      
-      const data = await response.json();
-      if (data.status === 'completed') {
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
-        }
-        setStep('success');
-      }
-    } catch (error) {
-      console.error('Status check failed:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleCashPayment = async () => {
     if (cashReceivedNum < totalAmount) return;
 
-    setLoading(true);
     const result = await createTransaction('cash');
-    
-    if (result?.success) {
+    if (result) {
       setStep('success');
     }
-    setLoading(false);
   };
 
   const handleQrisGeneration = async () => {
-    setLoading(true);
     const result = await createTransaction('qris');
-    
-    if (result?.success && result.transaction.paymentUrl) {
-      setQrisUrl(result.transaction.paymentUrl);
-      setTransactionId(result.transaction.id);
+    if (result?.success && result.data.paymentUrl) {
+      setQrisUrl(result.data.paymentUrl);
       setStep('qris-display');
     }
-    setLoading(false);
-  };
-
-  const startPolling = () => {
-    if (!transactionId) return;
-    
-    const interval = setInterval(() => {
-      checkPaymentStatus(transactionId);
-    }, 3000);
-    
-    setPollingInterval(interval);
   };
 
   useEffect(() => {
     if (step === 'success') {
       const timer = setTimeout(() => {
         clearCart();
-        handleCloseModal();
+        handleConfirmClose();
       }, 3000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [step, clearCart]);
 
-  useEffect(() => {
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [pollingInterval]);
 
   const renderContent = () => {
     switch (step) {
@@ -177,16 +187,16 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
             <div className="space-y-4">
               <Label className="text-base font-medium">Pilih Metode Pembayaran</Label>
               <RadioGroup value={paymentMethod} onValueChange={(value: 'cash' | 'qris') => setPaymentMethod(value)}>
-                <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                <Label htmlFor="cash" className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
                   <RadioGroupItem value="cash" id="cash" />
                   <Banknote className="h-5 w-5 text-green-600" />
-                  <Label htmlFor="cash" className="cursor-pointer flex-1">Tunai</Label>
-                </div>
-                <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <span className="flex-1">Tunai</span>
+                </Label>
+                <Label htmlFor="qris" className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
                   <RadioGroupItem value="qris" id="qris" />
                   <CreditCard className="h-5 w-5 text-blue-600" />
-                  <Label htmlFor="qris" className="cursor-pointer flex-1">QRIS</Label>
-                </div>
+                  <span className="flex-1">QRIS</span>
+                </Label>
               </RadioGroup>
             </div>
 
@@ -215,21 +225,12 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
             )}
 
             <div className="flex gap-3">
-              <ConfirmDialog
-                title="Batalkan Transaksi"
-                description="Apakah Anda yakin ingin membatalkan transaksi ini? Semua item di keranjang akan hilang."
-                confirmText="Ya, Batalkan"
-                cancelText="Tidak"
-                variant="destructive"
-                onConfirm={handleCloseModal}
-              >
-                <Button variant="outline" className="flex-1">
-                  Batal
-                </Button>
-              </ConfirmDialog>
-              <Button 
+              <Button variant="outline" onClick={handleAttemptClose} className="flex-1">
+                Batal
+              </Button>
+              <Button
                 onClick={paymentMethod === 'cash' ? handleCashPayment : handleQrisGeneration}
-                disabled={paymentMethod === 'cash' ? cashReceivedNum < totalAmount : false}
+                disabled={loading || (paymentMethod === 'cash' ? cashReceivedNum < totalAmount : false)}
                 className="flex-1"
               >
                 {loading && <LoadingSpinner size="sm" className="mr-2" />}
@@ -248,36 +249,28 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
             </div>
 
             <div className="flex justify-center">
-              <div className="p-4 bg-white border-2 border-gray-300 rounded-lg">
-                <Image
-                  src={qrisUrl}
-                  alt="QRIS Code"
-                  width={200}
-                  height={200}
-                  className="mx-auto"
-                />
-              </div>
+              {qrisUrl ? (
+                <div className="p-4 bg-white border-2 border-gray-300 rounded-lg">
+                  <Image
+                    src={qrisUrl}
+                    alt="QRIS Code"
+                    width={200}
+                    height={200}
+                    className="mx-auto"
+                    priority
+                  />
+                </div>
+              ) : <LoadingSpinner size="lg" />}
             </div>
 
             <p className="text-sm text-gray-600">
-              Silakan pindai kode QR menggunakan aplikasi pembayaran Anda
+              Silakan pindai kode QR menggunakan aplikasi pembayaran Anda.
+              Jangan tutup jendela ini.
             </p>
 
             <div className="flex gap-3">
-              <ConfirmDialog
-                title="Batalkan Pembayaran QRIS"
-                description="Apakah Anda yakin ingin membatalkan pembayaran QRIS ini? Transaksi akan dibatalkan."
-                confirmText="Ya, Batalkan"
-                cancelText="Tidak"
-                variant="destructive"
-                onConfirm={handleCloseModal}
-              >
-                <Button variant="outline" className="flex-1">
-                  Batal
-                </Button>
-              </ConfirmDialog>
-              <Button onClick={startPolling} className="flex-1">
-                Cek Status Pembayaran
+              <Button variant="outline" onClick={handleAttemptClose} className="w-full">
+                Batalkan Transaksi
               </Button>
             </div>
           </div>
@@ -294,7 +287,7 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
               <p className="text-gray-600">Transaksi telah selesai</p>
               <p className="text-2xl font-bold text-gray-900 mt-2">{formatPrice(totalAmount)}</p>
             </div>
-            <p className="text-sm text-gray-500">Modal akan tertutup otomatis...</p>
+            <p className="text-sm text-gray-500">Modal ini akan tertutup secara otomatis...</p>
           </div>
         );
 
@@ -304,14 +297,47 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleCloseModal}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          handleAttemptClose();
+        } else {
+          onOpenChange(true);
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => {
+        if (step === 'qris-display') {
+          e.preventDefault();
+        }
+      }}
+      >
         <DialogHeader>
           <DialogTitle>
-            {step === 'success' ? 'Pembayaran Selesai' : 'Pembayaran'}
+            {step === 'success' ? 'Pembayaran Selesai' : 'Detail Pembayaran'}
           </DialogTitle>
         </DialogHeader>
         {renderContent()}
+        <ConfirmDialog
+          open={isCancelModalOpen}
+          onOpenChange={setCancelModalOpen}
+          title="Batalkan Transaksi"
+          description="Apakah Anda yakin ingin membatalkan transaksi ini? Tindakan ini tidak dapat diurungkan."
+          confirmText="Ya, Batalkan"
+          cancelText="Lanjutkan Pembayaran"
+          variant="destructive"
+          onConfirm={async () => {
+            if (step === 'qris-display' && currentTransactionId) {
+              const success = await handleCancelTransaction(currentTransactionId);
+              if (success) {
+                handleConfirmClose();
+              }
+            } else {
+              handleConfirmClose();
+            }
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

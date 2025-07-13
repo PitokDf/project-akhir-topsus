@@ -59,15 +59,13 @@ export interface CreateTransactionRequest {
   items: Array<{
     menuId: number;
     quantity: number;
-    priceAtSale: number;
   }>;
-  totalAmount: number;
   paymentMethod: 'cash' | 'qris';
   userId: string;
 }
 
 export interface CreateTransactionResponse {
-  transaction: Transaction;
+  data: TransactionResponse;
   success: boolean;
   message: string;
 }
@@ -96,4 +94,25 @@ export interface Summary {
 export interface Period {
   start: string
   end: string
+}
+
+export interface TransactionResponse {
+  id: number
+  userId: string
+  transactionDate: string
+  totalAmount: number
+  paymentMethod: string
+  status: string
+  paymentToken: string
+  paymentUrl: string
+  items: Item[]
+}
+
+export interface Item {
+  id: number
+  transactionId: number
+  menuId: number
+  quantity: number
+  priceAtSale: number
+  itemTotal: number
 }

@@ -4,11 +4,12 @@ import * as TransactionRepository from '../repositories/transaction.repository';
 import { CreateTransactionInput } from '../schemas/transaction.schema';
 import { AppError } from '../errors/app-error';
 import { HttpStatus } from '../constants/http-status';
+import { io } from '../app';
 
 export const createTransaction = async (input: CreateTransactionInput) => {
     const { items, paymentMethod, userId } = input;
 
-    // 1. Get menu details and calculate totals
+    // Get menu details and calculate totals
     const menuIds = items.map((item) => item.menuId);
     const menus = await prisma.menu.findMany({
         where: { id: { in: menuIds } },
@@ -27,11 +28,12 @@ export const createTransaction = async (input: CreateTransactionInput) => {
             menuId: item.menuId,
             quantity: item.quantity,
             priceAtSale: menu.price,
+            name: menu.name,
             itemTotal,
         };
     });
 
-    // 2. Create transaction record in our database
+    // Create transaction record in our database
     const transactionData = {
         userId,
         totalAmount,
@@ -45,6 +47,12 @@ export const createTransaction = async (input: CreateTransactionInput) => {
     if (paymentMethod === 'qris') {
         const parameter = {
             payment_type: 'qris',
+            item_details: transactionItems.map((item) => ({
+                id: item.menuId,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.priceAtSale
+            })),
             transaction_details: {
                 order_id: newTransaction.id.toString(),
                 gross_amount: newTransaction.totalAmount,
@@ -71,6 +79,7 @@ export const createTransaction = async (input: CreateTransactionInput) => {
         };
     }
 
+    // io.emit('transaction:update', newTransaction);
     return newTransaction;
 };
 
@@ -89,4 +98,33 @@ export const getTransactionStats = async () => {
     const todayTransaction = await TransactionRepository.getTodayTransactionCount(today, tomorrow);
 
     return { todayIncome, todayTransaction };
+};
+
+export const updateTransactionStatus = async (id: string, status: 'PENDING' | 'SUCCESS' | 'CANCELLED' | 'FAILED' | 'EXPIRED') => {
+    const transaction = await TransactionRepository.findTransactionById(id);
+    if (!transaction) {
+        throw new AppError('Transaction not found', HttpStatus.NOT_FOUND);
+    }
+
+    const updatedTransaction = await TransactionRepository.updateTransactionStatus(id, status);
+    io.emit('transaction:update', updatedTransaction);
+    return updatedTransaction;
+};
+
+export const cancelTransaction = async (id: string) => {
+    const transaction = await TransactionRepository.findTransactionById(id);
+
+    if (!transaction) {
+        throw new AppError('Transaction not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (transaction.paymentMethod !== 'qris' || !transaction.paymentToken) {
+        throw new AppError('Only QRIS transactions can be cancelled through this endpoint', HttpStatus.BAD_REQUEST);
+    }
+
+    await core.transaction.cancel(transaction.paymentToken);
+
+    const updatedTransaction = await TransactionRepository.updateTransactionStatus(id, 'CANCELLED');
+    io.emit('transaction:update', updatedTransaction);
+    return updatedTransaction;
 };

@@ -24,6 +24,8 @@ services:
         condition: service_started
       report-service:
         condition: service_started
+      notification-service:
+        condition: service_started
     networks:
       - cashiersystem-network
 
@@ -105,7 +107,6 @@ services:
     environment:
       - PORT=3003
       - DATABASE_URL=${TRANSACTION_SERVICE_DB_URL}
-      - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on:
       db:
         condition: service_healthy
@@ -135,6 +136,23 @@ services:
       - ./report-service:/usr/src/app
       - /usr/src/app/node_modules
       - ./report-service/prisma:/usr/src/app/prisma
+    networks:
+      - cashiersystem-network
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    # - "4005:4005"
+    environment:
+      - PORT=4005
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    volumes:
+      - ./notification-service:/usr/src/app
+      - /usr/src/app/node_modules
     networks:
       - cashiersystem-network
 

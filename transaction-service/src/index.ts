@@ -1,7 +1,7 @@
 import { networkInterfaces } from "node:os";
-import app from "./app";
+import server from "./app";
 import { config } from "./config";
-import { connectRabbitMQ } from "./config/rabbitmq";
+import { rabbitMQService } from "./service/rabbitmq.service";
 import { startPaymentWorker } from "./workers/payment.worker";
 
 function getNetworkAdresses(): string[] {
@@ -20,9 +20,9 @@ function getNetworkAdresses(): string[] {
 }
 
 function startServer(port: number) {
-    const server = app.listen(port, async () => {
-        await connectRabbitMQ();
-        startPaymentWorker();
+    const httpServer = server.listen(port, async () => {
+        await rabbitMQService.connect();
+        await startPaymentWorker();
         console.log(`• Server running on:`);
         console.log(`   Local:   http://localhost:${port}`);
 
@@ -34,7 +34,7 @@ function startServer(port: number) {
         }
     })
 
-    server.on("error", (err: NodeJS.ErrnoException) => {
+    httpServer.on("error", (err: NodeJS.ErrnoException) => {
         if (err.code === "EADDRINUSE") {
             console.warn(`Port ${port} in use, trying ${port + 1}…`);
             startServer(port + 1)

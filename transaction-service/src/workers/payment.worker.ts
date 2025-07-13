@@ -1,23 +1,67 @@
-import { getChannel } from '../config/rabbitmq';
-import amqp from 'amqplib';
-import * as TransactionRepository from '../repositories/transaction.repository';
+import { Channel, ConsumeMessage } from 'amqplib';
+import { rabbitMQService } from '../service/rabbitmq.service';
+import logger from '../utils/winston.logger';
+import * as TransactionService from '../service/transaction.service';
 
-export const startPaymentWorker = () => {
-    const channel = getChannel();
-    const queue = 'payment_notifications';
+const EXCHANGE_NAME = 'transaction_events';
+const QUEUE_NAME = 'payment_update_queue'; // Nama queue yang berbeda dari notification-service
+const ROUTING_KEY = 'transaction.payment.updated';
 
-    channel.consume(queue, async (msg: amqp.ConsumeMessage | null) => {
-        if (msg) {
-            const notification = JSON.parse(msg.content.toString());
-            const { order_id, transaction_status } = notification;
+// Fungsi untuk menerjemahkan status Midtrans ke status internal
+const translateStatus = (midtransStatus: string): 'PENDING' | 'SUCCESS' | 'CANCELLED' | 'FAILED' | 'EXPIRED' | null => {
+    switch (midtransStatus) {
+        case 'settlement':
+            return 'SUCCESS';
+        case 'pending':
+            return 'PENDING';
+        case 'cancel':
+        case 'deny':
+            return 'CANCELLED';
+        case 'expire':
+            return 'EXPIRED';
+        default:
+            return null;
+    }
+};
 
-            if (transaction_status === 'capture' || transaction_status === 'settlement') {
-                await TransactionRepository.updateTransactionStatus(order_id, 'completed');
-            } else if (transaction_status === 'cancel' || transaction_status === 'expire') {
-                await TransactionRepository.updateTransactionStatus(order_id, 'failed');
+export const startPaymentWorker = async () => {
+    try {
+        const channel = rabbitMQService.getChannel();
+
+        await channel.assertExchange(EXCHANGE_NAME, 'topic', { durable: true });
+        const q = await channel.assertQueue(QUEUE_NAME, { durable: true });
+        logger.info(`Payment worker is waiting for messages in queue: ${q.queue}`);
+
+        await channel.bindQueue(q.queue, EXCHANGE_NAME, ROUTING_KEY);
+
+        channel.consume(q.queue, async (msg: ConsumeMessage | null) => {
+            if (msg) {
+                try {
+                    const notification = JSON.parse(msg.content.toString());
+                    logger.info(`[${ROUTING_KEY}] Received notification for order: ${notification.order_id}`);
+
+                    const internalStatus = translateStatus(notification.transaction_status);
+
+                    if (internalStatus) {
+                        await TransactionService.updateTransactionStatus(notification.order_id, internalStatus);
+                        logger.info(`Transaction ${notification.order_id} status updated to ${internalStatus}`);
+                    } else {
+                        logger.warn(`Ignoring unknown transaction status: ${notification.transaction_status}`);
+                    }
+
+                    channel.ack(msg);
+                } catch (error: any) {
+                    logger.error('Error processing payment notification', {
+                        message: error.message,
+                        stack: error.stack,
+                        orderId: JSON.parse(msg.content.toString())?.order_id,
+                    });
+                    // Nack (negative acknowledgment) untuk mengembalikan pesan ke antrian jika terjadi error
+                    channel.nack(msg, false, false); // false kedua berarti tidak requeue, kirim ke DLX jika ada
+                }
             }
-
-            channel.ack(msg);
-        }
-    });
+        }, { noAck: false });
+    } catch (error) {
+        logger.error('Failed to start payment worker', error);
+    }
 };
