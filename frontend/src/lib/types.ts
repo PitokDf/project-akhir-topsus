@@ -71,3 +71,29 @@ export interface CreateTransactionResponse {
   success: boolean;
   message: string;
 }
+
+export interface Stats {
+  totalMenu: number
+  totalCategory: number
+  todayIncome: number
+  todayTransaction: number
+}
+
+export interface SalesReport {
+  summary: Summary
+  transactions: Transaction[]
+  topSellingProducts: any[]
+  period: Period
+}
+
+export interface Summary {
+  totalRevenue: number
+  totalTransactions: number
+  totalItemsSold: number
+  averagePerTransaction: number
+}
+
+export interface Period {
+  start: string
+  end: string
+}

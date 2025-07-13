@@ -11,26 +11,24 @@ import {
 } from 'lucide-react';
 import { StatCard } from '@/components/ui/stat-card';
 import { ManagementCard } from '@/components/ui/management-card';
+import { useEffect, useState } from 'react';
+import { Stats } from '@/lib/types';
+import { formatPrice } from '@/lib/utils/formatters';
+import { reportService } from '@/lib/service/report';
 
 export default function AdminPage() {
   const user = AuthService.getCurrentUser();
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
+  const [stats, setStats] = useState<Stats>()
 
-  // Mock statistics
-  const stats = {
-    totalMenus: mockMenus.length,
-    totalCategories: mockCategories.length,
-    todayRevenue: 2450000,
-    todayTransactions: 47,
-  };
+  useEffect(() => {
+    const fetchStats = async () => {
+      const data = await reportService.getStatistics()
+      setStats(data)
+    }
 
+    fetchStats()
+  }, [])
   return (
     < >
       {/* Welcome Section */}
@@ -47,29 +45,29 @@ export default function AdminPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total Menu"
-          value={stats.totalMenus}
-          description="Item menu aktif"
+          value={stats?.totalMenu ?? 0}
+          note="Item menu aktif"
           icon={Coffee}
         />
 
         <StatCard
           title="Kategori"
-          value={stats.totalCategories}
-          description="Kategori menu"
+          value={stats?.totalCategory ?? 0}
+          note="Kategori menu"
           icon={ShoppingBag}
         />
 
         <StatCard
           title="Pendapatan Hari Ini"
-          value={formatPrice(stats.todayRevenue)}
-          description="+12% dari kemarin"
+          value={formatPrice(stats?.todayIncome ?? 0)}
+          note="+12% dari kemarin"
           icon={TrendingUp}
         />
 
         <StatCard
           title="Transaksi Hari Ini"
-          value={stats.todayTransactions}
-          description="+8% dari kemarin"
+          value={stats?.todayTransaction ?? 0}
+          note="+8% dari kemarin"
           icon={BarChart3}
         />
       </div>

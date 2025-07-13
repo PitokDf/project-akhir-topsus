@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { config } from '../config';
 
-const MENU_SERVICE_URL = 'http://menu-service:3002/api/v1';
-const TRANSACTION_SERVICE_URL = 'http://transaction-service:3003/api/v1';
+const MENU_SERVICE_URL = config.MENU_SERVICE_URL;
+const TRANSACTION_SERVICE_URL = config.TRANSACTION_SERVICE_URL;
 
 export async function getStatistics() {
     try {
@@ -16,11 +17,10 @@ export async function getStatistics() {
         return {
             totalMenu,
             totalCategory,
-            todayIncome,
-            todayTransaction,
+            todayIncome: todayIncome ?? 0,
+            todayTransaction: todayTransaction ?? 0,
         };
     } catch (error) {
-        // Handle error appropriately
         console.error('Error fetching statistics:', error);
         throw new Error('Failed to fetch statistics');
     }
