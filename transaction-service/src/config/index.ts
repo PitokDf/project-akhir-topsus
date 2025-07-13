@@ -15,5 +15,9 @@ export const config = {
     rateLimit: {
         WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "90000", 10),
         MAX: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100", 10),
-    }
+    },
+
+    // midtrans
+    MIDTRANS_SERVER_KEY: process.env.MIDTRANS_SERVER_KEY || "",
+    MIDTRANS_CLIENT_KEY: process.env.MIDTRANS_CLIENT_KEY || "",
 } as const

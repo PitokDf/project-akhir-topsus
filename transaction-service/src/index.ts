@@ -1,6 +1,8 @@
 import { networkInterfaces } from "node:os";
 import app from "./app";
 import { config } from "./config";
+import { connectRabbitMQ } from "./config/rabbitmq";
+import { startPaymentWorker } from "./workers/payment.worker";
 
 function getNetworkAdresses(): string[] {
     const nets = networkInterfaces();
@@ -18,7 +20,9 @@ function getNetworkAdresses(): string[] {
 }
 
 function startServer(port: number) {
-    const server = app.listen(port, () => {
+    const server = app.listen(port, async () => {
+        await connectRabbitMQ();
+        startPaymentWorker();
         console.log(`• Server running on:`);
         console.log(`   Local:   http://localhost:${port}`);
 

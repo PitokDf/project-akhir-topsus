@@ -63,7 +63,9 @@ model Transaction {
   transactionDate DateTime @default(now()) @map("transaction_date")
   totalAmount     Float
   paymentMethod   String   @default("cash") @map("payment_method")
-  status          String   @default("completed")
+  status          String   @default("pending")
+  paymentToken    String?  @unique @map("payment_token")
+  paymentUrl      String?  @unique @map("payment_url")
 
   items TransactionItem[] // Item-item dalam transaksi ini
 

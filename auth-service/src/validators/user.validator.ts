@@ -12,7 +12,7 @@ export const checkEmailExists = async (
     const userId = req.params.userId
     if (!email) return next();
 
-    const existingUser = await UserRepository.findByEmail(email)
+    const existingUser = await UserRepository.findByEmail(email, userId)
 
     if (existingUser) throw new AppError("Email sudah terdaftar", HttpStatus.BAD_REQUEST);
 

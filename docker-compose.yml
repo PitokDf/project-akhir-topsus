@@ -9,7 +9,8 @@ services:
       - "80:80" # Port 80 untuk akses web standar
       - "443:443" # Port 443 untuk HTTPS (jika nanti dikonfigurasi)
     volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/uastopsus.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./menu-service/uploads:/usr/share/nginx/html/uploads:ro
       # Tambahkan volume untuk sertifikat SSL di produksi jika menggunakan HTTPS
       # - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
@@ -80,7 +81,10 @@ services:
     environment:
       - PORT=3002
       - DATABASE_URL=${MENU_SERVICE_DB_URL}
+      - REDIS_URL=redis://redis:6379
     depends_on:
+      redis:
+        condition: service_started
       db:
         condition: service_healthy
       migration-service:
@@ -89,6 +93,7 @@ services:
       - ./menu-service:/usr/src/app
       - /usr/src/app/node_modules
       - ./menu-service/prisma:/usr/src/app/prisma
+      - ./menu-service/uploads:/usr/src/app/uploads
     networks:
       - cashiersystem-network
 
@@ -100,6 +105,7 @@ services:
     environment:
       - PORT=3003
       - DATABASE_URL=${TRANSACTION_SERVICE_DB_URL}
+      - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on:
       db:
         condition: service_healthy
@@ -144,7 +150,7 @@ services:
       - postgres_data:/var/lib/postgresql/data # Volume persisten untuk data DB
       # init.sql dihapus karena migrasi ditangani oleh migration-service
     ports:
-      - "5432:5432" # Hanya untuk akses lokal/debugging
+      - "5433:5432" # Hanya untuk akses lokal/debugging, diubah ke 5433
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -172,8 +178,31 @@ services:
     networks:
       - cashiersystem-network
 
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672" # Port untuk koneksi AMQP
+      - "15672:15672" # Port untuk UI Management
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - cashiersystem-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cashiersystem-network
+
 volumes:
-  postgres_data: # Definisi volume persisten
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
 
 networks:
   cashiersystem-network:

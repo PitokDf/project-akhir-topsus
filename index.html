@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papan Tugas Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'custom-bg': '#1a1b26',
+                        'custom-surface': '#24283b',
+                        'custom-overlay': 'rgba(36, 40, 59, 0.7)',
+                        'custom-border': '#414868',
+                        'custom-text': '#c0caf5',
+                        'custom-subtle': '#565f89',
+                        'custom-primary': '#7aa2f7',
+                        'custom-primary-hover': '#6b90db',
+                        'custom-danger': '#f7768e',
+                        'custom-danger-hover': '#d9687a',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Gaya Drag & Drop */
+        .task.dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+        }
+
+        .column.drag-over {
+            border-style: dashed;
+            border-color: #7aa2f7;
+        }
+
+        .task {
+            cursor: grab;
+            transition: all 0.3s ease;
+        }
+
+        .task:active {
+            cursor: grabbing;
+        }
+
+        /* Animasi Tugas & Modal */
+        .modal,
+        .task {
+            transition: all 0.2s ease;
+        }
+
+        .modal-enter,
+        .task-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        .modal-exit,
+        .task-exit {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        /* Gaya Input Edit */
+        .task-edit-input {
+            width: 100%;
+            background-color: #1a1b26;
+            border: 1px solid #7aa2f7;
+            border-radius: 4px;
+            padding: 2px 4px;
+            color: #c0caf5;
+            outline: none;
+        }
+
+        /* Gaya Notifikasi Toast */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1050;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            opacity: 1;
+            transform: translateX(0);
+            transition: all 0.4s ease-in-out;
+        }
+
+        .toast.toast-success {
+            background-color: #22c55e;
+        }
+
+        .toast.toast-error {
+            background-color: #ef4444;
+        }
+
+        .toast.toast-info {
+            background-color: #3b82f6;
+        }
+
+        .toast.fade-out {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+    </style>
+</head>
+
+<body class="bg-custom-bg text-custom-text font-sans p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header: Judul dan Form Tambah Tugas -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold mb-6">Papan Tugas Pro</h1>
+            <form id="add-task-form" class="flex flex-wrap justify-center items-center gap-3">
+                <input type="text" id="task-input" placeholder="Tulis tugas baru..."
+                    class="w-full max-w-sm p-3 rounded-lg bg-custom-surface border border-custom-border focus:outline-none focus:ring-2 focus:ring-custom-primary placeholder-custom-subtle"
+                    required>
+                <select id="priority-select"
+                    class="p-3 rounded-lg bg-custom-surface border border-custom-border focus:outline-none focus:ring-2 focus:ring-custom-primary">
+                    <option value="rendah" class="text-green-400">Rendah</option>
+                    <option value="sedang" class="text-yellow-400">Sedang</option>
+                    <option value="tinggi" class="text-red-400">Tinggi</option>
+                </select>
+                <button type="submit"
+                    class="bg-custom-primary hover:bg-custom-primary-hover text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                    Tambah
+                </button>
+            </form>
+            <p class="text-custom-subtle text-sm mt-4">Tekan <kbd
+                    class="font-sans border border-custom-border rounded px-1.5 py-0.5 text-xs">Ctrl</kbd> + <kbd
+                    class="font-sans border border-custom-border rounded px-1.5 py-0.5 text-xs">K</kbd> untuk mencari
+            </p>
+        </header>
+
+        <!-- Papan Utama -->
+        <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div id="todo" class="column bg-custom-overlay backdrop-blur-sm rounded-lg shadow-lg p-4 flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 border-b-2 border-red-500 pb-2 flex justify-between items-center">
+                    <span class="flex items-center gap-2">📋 To Do</span>
+                    <span id="todo-count"
+                        class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">0</span>
+                </h2>
+                <div id="todo-list" class="task-list flex-grow min-h-[200px] space-y-3 p-1"></div>
+            </div>
+            <div id="inprogress"
+                class="column bg-custom-overlay backdrop-blur-sm rounded-lg shadow-lg p-4 flex flex-col">
+                <h2
+                    class="text-xl font-semibold mb-4 border-b-2 border-yellow-500 pb-2 flex justify-between items-center">
+                    <span class="flex items-center gap-2">⏳ In Progress</span>
+                    <span id="inprogress-count"
+                        class="bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">0</span>
+                </h2>
+                <div id="inprogress-list" class="task-list flex-grow min-h-[200px] space-y-3 p-1"></div>
+            </div>
+            <div id="done" class="column bg-custom-overlay backdrop-blur-sm rounded-lg shadow-lg p-4 flex flex-col">
+                <div class="flex justify-between items-center mb-4 border-b-2 border-green-500 pb-2">
+                    <h2 class="text-xl font-semibold flex items-center gap-2">✅ Done</h2>
+                    <div class="flex items-center gap-2">
+                        <span id="done-count"
+                            class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">0</span>
+                        <button id="clear-done-btn" title="Hapus semua tugas Selesai"
+                            class="text-custom-subtle hover:text-custom-text text-xs">Hapus Semua</button>
+                    </div>
+                </div>
+                <div id="done-list" class="task-list flex-grow min-h-[200px] space-y-3 p-1"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus -->
+    <div id="confirmation-modal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[1000] hidden modal modal-enter">
+        <div class="bg-custom-surface rounded-lg shadow-xl max-w-sm w-full p-6 text-center">
+            <h3 id="confirm-title" class="text-xl font-bold mb-4">Konfirmasi Tindakan</h3>
+            <p id="confirm-message" class="text-custom-text mb-6">Apakah Anda yakin?</p>
+            <div class="flex justify-center gap-4">
+                <button id="cancel-btn"
+                    class="bg-custom-border hover:bg-custom-subtle text-white font-bold py-2 px-6 rounded-lg transition-colors">Batal</button>
+                <button id="confirm-btn"
+                    class="bg-custom-danger hover:bg-custom-danger-hover text-white font-bold py-2 px-6 rounded-lg transition-colors">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pencarian -->
+    <div id="search-modal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 pt-[15vh] z-[1000] hidden modal modal-enter">
+        <div class="bg-custom-surface rounded-lg shadow-xl max-w-lg w-full">
+            <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-custom-subtle">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </span>
+                <input type="text" id="search-modal-input" placeholder="Cari tugas di semua kolom..."
+                    class="w-full p-4 pl-12 text-lg bg-transparent focus:outline-none text-custom-text placeholder-custom-subtle">
+            </div>
+        </div>
+    </div>
+
+    <!-- Container Notifikasi Toast -->
+    <div id="toast-container"></div>
+
+    <script>
+        // SATU BLOK EVENT LISTENER UNTUK SEMUA KODE
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- PEMILIHAN ELEMEN DOM ---
+            const form = document.getElementById('add-task-form');
+            const input = document.getElementById('task-input');
+            const prioritySelect = document.getElementById('priority-select');
+            const taskLists = document.querySelectorAll('.task-list');
+            const clearDoneBtn = document.getElementById('clear-done-btn');
+
+            const confirmationModal = document.getElementById('confirmation-modal');
+            const confirmTitle = document.getElementById('confirm-title');
+            const confirmMessage = document.getElementById('confirm-message');
+            const confirmBtn = document.getElementById('confirm-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const searchModal = document.getElementById('search-modal');
+            const searchModalInput = document.getElementById('search-modal-input');
+
+            const priorityClasses = { tinggi: 'bg-red-500', sedang: 'bg-yellow-500', rendah: 'bg-green-500' };
+            let draggedTask = null;
+
+            // --- FUNGSI MODAL & NOTIFIKASI ---
+            const showToast = (message, type = 'success') => {
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.textContent = message;
+                document.getElementById('toast-container').appendChild(toast);
+                setTimeout(() => {
+                    toast.classList.add('fade-out');
+                    toast.addEventListener('transitionend', () => toast.remove());
+                }, 3000);
+            };
+
+            const showConfirmationModal = (title, message, onConfirm) => {
+                confirmTitle.textContent = title;
+                confirmMessage.textContent = message;
+
+                confirmationModal.classList.remove('hidden');
+                requestAnimationFrame(() => confirmationModal.classList.remove('modal-enter'));
+
+                const handleConfirm = () => {
+                    onConfirm();
+                    closeConfirmationModal();
+                };
+                const closeConfirmationModal = () => {
+                    confirmationModal.classList.add('modal-enter');
+                    confirmationModal.addEventListener('transitionend', () => {
+                        confirmationModal.classList.add('hidden');
+                    }, { once: true });
+                    confirmBtn.removeEventListener('click', handleConfirm);
+                    cancelBtn.removeEventListener('click', closeConfirmationModal);
+                };
+
+                confirmBtn.addEventListener('click', handleConfirm, { once: true });
+                cancelBtn.addEventListener('click', closeConfirmationModal, { once: true });
+            };
+
+            const openSearchModal = () => {
+                searchModal.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    searchModal.classList.remove('modal-enter');
+                    searchModalInput.focus();
+                });
+            };
+
+            const closeSearchModal = () => {
+                searchModal.classList.add('modal-enter');
+                searchModal.addEventListener('transitionend', () => {
+                    searchModal.classList.add('hidden');
+                    searchModalInput.value = '';
+                    filterTasks('');
+                }, { once: true });
+            };
+
+            // --- MANAJEMEN DATA (LOCAL STORAGE) ---
+            const updateTaskCounts = () => {
+                ['todo', 'inprogress', 'done'].forEach(colId => {
+                    const count = document.getElementById(`${colId}-list`).children.length;
+                    document.getElementById(`${colId}-count`).textContent = count;
+                });
+            };
+
+            const saveState = () => {
+                const state = { todo: [], inprogress: [], done: [] };
+                document.querySelectorAll('.task').forEach(task => {
+                    const columnId = task.closest('.task-list').id.replace('-list', '');
+                    state[columnId].push({
+                        id: task.dataset.id,
+                        text: task.querySelector('.task-text').textContent,
+                        priority: task.dataset.priority
+                    });
+                });
+                localStorage.setItem('trelloCloneState', JSON.stringify(state));
+                updateTaskCounts();
+            };
+
+            const loadState = () => {
+                const savedState = localStorage.getItem('trelloCloneState');
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    Object.keys(state).forEach(columnId => {
+                        state[columnId].forEach(taskData => {
+                            document.getElementById(`${colId}-list`).appendChild(createTaskElement(taskData));
+                        });
+                    });
+                }
+                updateTaskCounts();
+            };
+
+            // --- FUNGSI INTI ---
+            const handleEditTask = (e) => {
+                const taskSpan = e.target;
+                const originalText = taskSpan.textContent;
+                const inputEl = document.createElement('input');
+                inputEl.type = 'text';
+                inputEl.value = originalText;
+                inputEl.className = 'task-edit-input';
+                taskSpan.style.display = 'none';
+                taskSpan.parentElement.appendChild(inputEl);
+                inputEl.focus();
+                const saveEdit = () => {
+                    const newText = inputEl.value.trim();
+                    if (newText && newText !== originalText) {
+                        taskSpan.textContent = newText;
+                        showToast('Tugas diperbarui!', 'info');
+                    } else {
+                        taskSpan.textContent = originalText;
+                    }
+                    inputEl.remove();
+                    taskSpan.style.display = 'inline';
+                    saveState();
+                };
+                inputEl.addEventListener('blur', saveEdit);
+                inputEl.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === 'Escape') ev.target.blur(); });
+            };
+
+            const addDragEventsToTask = (task) => {
+                task.addEventListener('dragstart', () => { draggedTask = task; setTimeout(() => task.classList.add('dragging'), 0); });
+                task.addEventListener('dragend', () => { task.classList.remove('dragging'); draggedTask = null; saveState(); });
+            };
+
+            const createTaskElement = (taskData) => {
+                const { id, text, priority } = taskData;
+                const taskDiv = document.createElement('div');
+                taskDiv.className = 'task bg-custom-surface p-3 rounded-md shadow-md flex justify-between items-center task-enter';
+                taskDiv.draggable = true;
+                taskDiv.dataset.id = id;
+                taskDiv.dataset.priority = priority;
+
+                const contentWrapper = document.createElement('div');
+                contentWrapper.className = 'flex items-center gap-3 overflow-hidden';
+                const priorityDot = document.createElement('div');
+                priorityDot.className = `w-3 h-3 rounded-full flex-shrink-0 ${priorityClasses[priority]}`;
+                priorityDot.title = `Prioritas: ${priority}`;
+                const taskSpan = document.createElement('span');
+                taskSpan.className = 'task-text truncate';
+                taskSpan.textContent = text;
+                contentWrapper.append(priorityDot, taskSpan);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn text-custom-subtle hover:text-custom-danger text-xl font-bold transition-colors';
+                deleteBtn.innerHTML = '&times;';
+
+                taskDiv.append(contentWrapper, deleteBtn);
+
+                requestAnimationFrame(() => taskDiv.classList.remove('task-enter'));
+
+                taskSpan.addEventListener('dblclick', handleEditTask);
+                deleteBtn.addEventListener('click', () => {
+                    showConfirmationModal('Hapus Tugas', `Anda yakin ingin menghapus tugas "${text}"?`, () => {
+                        taskDiv.classList.add('task-exit');
+                        taskDiv.addEventListener('transitionend', () => {
+                            taskDiv.remove();
+                            saveState();
+                        }, { once: true });
+                        showToast('Tugas dihapus!', 'error');
+                    });
+                });
+                addDragEventsToTask(taskDiv);
+                return taskDiv;
+            };
+
+            const filterTasks = (searchTerm) => {
+                document.querySelectorAll('.task').forEach(task => {
+                    const taskText = task.querySelector('.task-text').textContent.toLowerCase();
+                    task.style.display = taskText.includes(searchTerm) ? 'flex' : 'none';
+                });
+            };
+
+            const getDragAfterElement = (container, y) => {
+                const draggableElements = [...container.querySelectorAll('.task:not(.dragging)')];
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            };
+
+            // --- EVENT LISTENERS GLOBAL ---
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const taskText = input.value.trim();
+                if (taskText) {
+                    const newTask = createTaskElement({ id: `task-${Date.now()}`, text: taskText, priority: prioritySelect.value });
+                    document.getElementById('todo-list').appendChild(newTask);
+                    input.value = '';
+                    saveState();
+                    showToast('Tugas baru ditambahkan!');
+                }
+            });
+
+            clearDoneBtn.addEventListener('click', () => {
+                if (document.getElementById('done-list').children.length > 0) {
+                    showConfirmationModal('Hapus Semua Tugas Selesai', 'Anda yakin ingin menghapus SEMUA tugas di kolom "Done"?', () => {
+                        document.getElementById('done-list').innerHTML = '';
+                        saveState();
+                        showToast('Semua tugas selesai telah dihapus.', 'info');
+                    });
+                }
+            });
+
+            searchModalInput.addEventListener('input', (e) => filterTasks(e.target.value.toLowerCase()));
+
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    if (searchModal.classList.contains('hidden')) {
+                        openSearchModal();
+                    } else {
+                        closeSearchModal();
+                    }
+                }
+                if (e.key === 'Escape') {
+                    if (!searchModal.classList.contains('hidden')) closeSearchModal();
+                }
+            });
+
+            searchModal.addEventListener('click', (e) => {
+                if (e.target === searchModal) closeSearchModal();
+            });
+
+            taskLists.forEach(list => {
+                list.addEventListener('dragover', e => { e.preventDefault(); list.parentElement.classList.add('drag-over'); const afterElement = getDragAfterElement(list, e.clientY); if (draggedTask) list.insertBefore(draggedTask, afterElement); });
+                list.addEventListener('dragleave', () => list.parentElement.classList.remove('drag-over'));
+                list.addEventListener('drop', e => { e.preventDefault(); list.parentElement.classList.remove('drag-over'); });
+            });
+
+            // --- INISIALISASI ---
+            loadState();
+        });
+    </script>
+</body>
+
+</html>

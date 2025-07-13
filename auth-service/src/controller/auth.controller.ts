@@ -25,7 +25,7 @@ export const registerUserController = asyncHandler(async (req: Request, res: Res
 export const loginUserController = asyncHandler(async (req: Request, res: Response) => {
     const payload = req.body
 
-    const token = await loginService(payload)
+    const data = await loginService(payload)
 
-    return ResponseUtil.success(res, { token }, HttpStatus.OK)
+    return ResponseUtil.success(res, data, HttpStatus.OK)
 })

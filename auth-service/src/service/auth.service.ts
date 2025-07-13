@@ -28,7 +28,14 @@ export async function loginService(data: LoginUserInput) {
 
     if (!isMatch) throw new AppError(Messages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
 
-    const token = JwtUtil.generate(user);
+    const payload = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        createdAt: user.createdAt
+    };
+    const token = JwtUtil.generate(payload);
 
-    return token
+    return { token, user: payload }
 }
