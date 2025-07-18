@@ -3,14 +3,14 @@
     "version": "1.0.0",
     "description": "Project Akhir Topik Khusus",
     "scripts": {
-        "dev": "docker-compose -f docker-compose.dev.yml up --build -d",
-        "dev:auth": "docker-compose -f docker-compose.dev.yml up --build -d auth-service",
-        "dev:frontend": "docker-compose -f docker-compose.dev.yml up --build -d frontend",
-        "dev:menu": "docker-compose -f docker-compose.dev.yml up --build -d menu-service",
-        "dev:transaction": "docker-compose -f docker-compose.dev.yml up --build -d transaction-service",
-        "dev:notification": "docker-compose -f docker-compose.dev.yml up --build -d notification-service",
-        "dev:report": "docker-compose -f docker-compose.dev.yml up --build -d report-service",
-        "down": "docker-compose -f docker-compose.dev.yml down"
+        "dev": "docker compose -f docker compose.dev.yml up --build -d",
+        "dev:auth": "docker compose -f docker compose.dev.yml up --build -d auth-service",
+        "dev:frontend": "docker compose -f docker compose.dev.yml up --build -d frontend",
+        "dev:menu": "docker compose -f docker compose.dev.yml up --build -d menu-service",
+        "dev:transaction": "docker compose -f docker compose.dev.yml up --build -d transaction-service",
+        "dev:notification": "docker compose -f docker compose.dev.yml up --build -d notification-service",
+        "dev:report": "docker compose -f docker compose.dev.yml up --build -d report-service",
+        "down": "docker compose -f docker compose.dev.yml down"
     },
     "keywords": [],
     "author": "",
