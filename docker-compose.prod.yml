@@ -1,0 +1,29 @@
+services:
+  frontend:
+    environment:
+      - NODE_ENV=production
+
+  auth-service:
+    environment:
+      - NODE_ENV=production
+
+  menu-service:
+    environment:
+      - NODE_ENV=production
+
+  transaction-service:
+    environment:
+      - NODE_ENV=production
+
+  report-service:
+    environment:
+      - NODE_ENV=production
+
+  db:
+    ports: []
+
+  rabbitmq:
+    ports: []
+
+  redis:
+    ports: []

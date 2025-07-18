@@ -1,0 +1,70 @@
+@startuml ERD
+!define table(x) class x << (T, #FFAAAA) >>
+!define view(x) class x << (V, #FFAAAA) >>
+!define ent(x) class x << (E, #FFAAAA) >>
+
+' hide the spot
+hide circle
+
+' avoid problems with angled crows feet
+skinparam linetype ortho
+
+entity "User" as user {
+  + id: String [PK]
+  --
+  name: String
+  email: String
+  password: String
+  role: userRole
+  createdAt: DateTime
+}
+
+entity "Category" as category {
+  + id: Int [PK]
+  --
+  name: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+entity "Menu" as menu {
+  + id: String [PK]
+  --
+  name: String
+  description: String
+  stock: Int
+  price: Float
+  categoryId: Int [FK]
+  imageUrl: String
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+entity "Transaction" as transaction {
+  + id: String [PK]
+  --
+  totalAmount: Float
+  paymentMethod: String
+  status: String
+  transactionDate: DateTime
+  userId: String [FK]
+  paymentGatewayId: String
+  paymentGatewayUrl: String
+}
+
+entity "TransactionItem" as transaction_item {
+  + id: String [PK]
+  --
+  quantity: Int
+  itemTotal: Float
+  transactionId: String [FK]
+  menuId: String [FK]
+}
+
+user ||--o{ transaction
+category ||--o{ menu
+transaction ||--o{ transaction_item
+menu ||--o{ transaction_item
+
+@enduml

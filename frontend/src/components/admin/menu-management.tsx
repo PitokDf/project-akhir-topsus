@@ -136,6 +136,8 @@ export function MenuManagement() {
           menuService.getAllMenus(),
           menuService.getAllCategories(),
         ]);
+        console.log(fetchedMenus);
+
         setAllMenus(fetchedMenus);
         setCategories(fetchedCategories);
       } catch (error) {

@@ -1,54 +1,65 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { mockTransactions } from '@/lib/data/mock-data';
-import { Transaction } from '@/lib/types';
+import { Transaction, Stats } from '@/lib/types';
+import { transactionService } from '@/lib/service/transaction';
 import { TransactionSummaryCards } from '../transactions/transaction-summary-card';
 import { TransactionFilters } from '../transactions/transaction-filters';
 import { TransactionTable } from '../transactions/transaction-table';
 import { TransactionDetailModal } from '../transactions/transaction-detail-modal';
+import { useDebounce } from '../../hooks/use-debounce';
 
 export function TransactionHistory() {
-  const [transactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10; // item per halaman
+  const PAGE_SIZE = 10;
 
-  // Gunakan useMemo untuk efisiensi agar tidak menghitung ulang pada setiap render
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter(transaction => {
-      const matchesSearch = transaction.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.id.toString().includes(searchTerm);
-      const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter;
-      const matchesPayment = paymentFilter === 'all' || transaction.paymentMethod === paymentFilter;
-      return matchesSearch && matchesStatus && matchesPayment;
-    });
-  }, [transactions, searchTerm, statusFilter, paymentFilter]);
-
-  const paginatedTransactions = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    const end = start + PAGE_SIZE;
-    return filteredTransactions.slice(start, end);
-  }, [filteredTransactions, page]);
-
-  const totalRevenue = useMemo(() => {
-    return transactions
-      .filter(t => t.status === 'completed')
-      .reduce((sum, t) => sum + t.totalAmount, 0);
-  }, [transactions]);
-
-  const transactionsToday = 0;
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   useEffect(() => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000)
-  }, [page, searchTerm, statusFilter, paymentFilter]);
+    const fetchTransactions = async () => {
+      setIsLoading(true);
+      try {
+        const params = {
+          page,
+          limit: PAGE_SIZE,
+          search: debouncedSearchTerm,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          paymentMethod: paymentFilter === 'all' ? undefined : paymentFilter,
+        };
+        const response = await transactionService.getAllTransactions(params);
+        setTransactions(response.data);
+        setTotalCount(response.meta.total);
+
+        console.log(response);
+
+      } catch (error) {
+        console.error('Failed to fetch transactions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const fetchStats = async () => {
+      try {
+        const statsData = await transactionService.getTransactionStatistics();
+        setStats(statsData);
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      }
+    }
+
+    fetchTransactions();
+    fetchStats();
+  }, [page, debouncedSearchTerm, statusFilter, paymentFilter]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -57,9 +68,9 @@ export function TransactionHistory() {
       </div>
 
       <TransactionSummaryCards
-        totalTransactions={transactions.length}
-        totalRevenue={totalRevenue}
-        transactionsToday={transactionsToday}
+        totalTransactions={totalCount}
+        totalRevenue={stats?.todayIncome ?? 0}
+        transactionsToday={stats?.todayTransaction ?? 0}
       />
 
       <TransactionFilters
@@ -72,12 +83,12 @@ export function TransactionHistory() {
       />
 
       <TransactionTable
-        transactions={paginatedTransactions}
+        transactions={transactions}
         onViewDetails={setSelectedTransaction}
         isLoading={isLoading}
         page={page}
         pageSize={PAGE_SIZE}
-        totalCount={filteredTransactions.length}
+        totalCount={totalCount}
         onPageChange={setPage}
       />
 

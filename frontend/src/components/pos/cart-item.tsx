@@ -5,6 +5,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { CartItem } from "@/lib/types";
 import { useCartStore } from "@/lib/store/cart-store";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useState } from "react";
 
 interface CartItemProps {
   item: CartItem;
@@ -12,7 +13,7 @@ interface CartItemProps {
 
 export function CartItemComponent({ item }: CartItemProps) {
   const { updateQuantity, removeItem } = useCartStore();
-
+  const [confirmDialog, setConfirmDialog] = useState<boolean>(false)
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -33,7 +34,7 @@ export function CartItemComponent({ item }: CartItemProps) {
           {formatPrice(item.menu.price)} × {item.quantity}
         </p>
       </div>
-      
+
       <div className="flex items-center gap-2">
         <Button
           size="sm"
@@ -43,11 +44,11 @@ export function CartItemComponent({ item }: CartItemProps) {
         >
           <Minus className="h-3 w-3" />
         </Button>
-        
+
         <span className="w-8 text-center text-sm font-medium">
           {item.quantity}
         </span>
-        
+
         <Button
           size="sm"
           variant="outline"
@@ -56,24 +57,27 @@ export function CartItemComponent({ item }: CartItemProps) {
         >
           <Plus className="h-3 w-3" />
         </Button>
-        
+
+        <Button
+          size="sm"
+          variant="destructive"
+          className="h-8 w-8 p-0 ml-2"
+          onClick={() => { setConfirmDialog(true) }}
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
         <ConfirmDialog
+          open={confirmDialog}
+          onOpenChange={() => { setConfirmDialog(false) }}
           title="Hapus Item"
           description={`Apakah Anda yakin ingin menghapus "${item.menu.name}" dari keranjang?`}
           confirmText="Hapus"
           variant="destructive"
           onConfirm={() => removeItem(item.menu.id)}
         >
-          <Button
-            size="sm"
-            variant="destructive"
-            className="h-8 w-8 p-0 ml-2"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
         </ConfirmDialog>
       </div>
-      
+
       <div className="text-right min-w-0">
         <p className="font-semibold text-gray-900">
           {formatPrice(totalPrice)}

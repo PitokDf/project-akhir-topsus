@@ -15,17 +15,17 @@ export const getMenus = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getMenuById = asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
-    const menu = await MenuService.getMenuById(parseInt(req.params.id, 10));
+    const menu = await MenuService.getMenuById(req.params.id);
     return ResponseUtil.success(res, menu);
 });
 
 export const updateMenu = asyncHandler(async (req: Request<{ id: string }, {}, UpdateMenuInput>, res: Response) => {
-    const menu = await MenuService.updateMenu(parseInt(req.params.id, 10), req.body);
+    const menu = await MenuService.updateMenu(req.params.id, req.body);
     return ResponseUtil.success(res, menu);
 });
 
 export const deleteMenu = asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
-    await MenuService.deleteMenu(parseInt(req.params.id, 10));
+    await MenuService.deleteMenu(req.params.id);
     return ResponseUtil.success(res, null, 204);
 });
 

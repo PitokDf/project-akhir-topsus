@@ -61,8 +61,6 @@ interface TableProps {
     onPageChange: (newPage: number) => void;
 }
 
-
-// --- Komponen Utama ---
 export function TransactionTable({
     transactions,
     onViewDetails,

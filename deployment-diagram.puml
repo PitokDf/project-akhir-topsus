@@ -1,0 +1,84 @@
+@startuml DeploymentDiagram
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Deployment Diagram for Point of Sale System
+
+Deployment_Node('host', 'Docker Host', 'Physical/Virtual Server') {
+    
+    Deployment_Node('network', 'Docker Network', 'cashiersystem-network (bridge)') {
+    
+        Deployment_Node('nginx_node', 'Nginx Container', 'Docker') {
+            Component(nginx_container, "nginx:latest")
+        }
+        Deployment_Node('frontend_node', 'Frontend Container', 'Docker') {
+            Component(frontend_container, "frontend:latest")
+        }
+        Deployment_Node('auth_node', 'Auth Service Container', 'Docker') {
+            Component(auth_container, "auth-service:latest")
+        }
+        Deployment_Node('menu_node', 'Menu Service Container', 'Docker') {
+            Component(menu_container, "menu-service:latest")
+        }
+        Deployment_Node('tx_node', 'Transaction Service Container', 'Docker') {
+            Component(tx_container, "transaction-service:latest")
+        }
+        Deployment_Node('report_node', 'Report Service Container', 'Docker') {
+            Component(report_container, "report-service:latest")
+        }
+        Deployment_Node('notify_node', 'Notification Service Container', 'Docker') {
+            Component(notify_container, "notification-service:latest")
+        }
+        Deployment_Node('migration_node', 'Migration Service Container', 'Docker') {
+            Component(migration_container, "migration-service:latest")
+        }
+        Deployment_Node('db_node', 'PostgreSQL Container', 'Docker') {
+            Component(db_container, "postgres:14-alpine")
+        }
+        Deployment_Node('rabbitmq_node', 'RabbitMQ Container', 'Docker') {
+            Component(rabbitmq_container, "rabbitmq:3.13-management")
+        }
+        Deployment_Node('redis_node', 'Redis Container', 'Docker') {
+            Component(redis_container, "redis:7-alpine")
+        }
+    }
+    
+    Deployment_Node('volumes', 'Docker Volumes', 'File System') {
+        Node(postgres_data, "postgres_data")
+        Node(rabbitmq_data, "rabbitmq_data")
+        Node(redis_data, "redis_data")
+        Node(menu_uploads, "menu_uploads")
+    }
+}
+
+' Connections from outside
+actor "User" as user
+Rel(user, nginx_node, "Uses", "HTTPS (80, 443)")
+
+' Connections within the network
+Rel(nginx_node, frontend_node, "Serves static files")
+Rel(nginx_node, auth_node, "Forwards API requests")
+Rel(nginx_node, menu_node, "Forwards API requests")
+Rel(nginx_node, tx_node, "Forwards API requests")
+Rel(nginx_node, report_node, "Forwards API requests")
+
+Rel(auth_node, db_node, "Reads/Writes")
+Rel(menu_node, db_node, "Reads/Writes")
+Rel(tx_node, db_node, "Reads/Writes")
+Rel(report_node, db_node, "Reads")
+Rel(migration_node, db_node, "Migrates Schema")
+
+Rel(menu_node, redis_node, "Caches data")
+Rel(tx_node, notify_node, "Sends events to")
+Rel(notify_node, rabbitmq_node, "Pub/Sub")
+
+' Volume mounting
+Rel_U(db_node, volumes, "Mounts postgres_data")
+Rel_U(rabbitmq_node, volumes, "Mounts rabbitmq_data")
+Rel_U(redis_node, volumes, "Mounts redis_data")
+Rel_U(menu_node, volumes, "Mounts menu_uploads")
+Rel_U(nginx_node, volumes, "Mounts menu_uploads (ro)")
+
+@enduml

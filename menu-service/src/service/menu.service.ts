@@ -36,7 +36,7 @@ export const getMenus = async () => {
     return menus;
 };
 
-export const getMenuById = async (id: number) => {
+export const getMenuById = async (id: string) => {
     const cacheKey = `${MENU_CACHE_KEY}:${id}`;
     const cachedMenu = await redisClient.get(cacheKey);
     if (cachedMenu) {
@@ -54,7 +54,7 @@ export const getMenuById = async (id: number) => {
     return menu;
 };
 
-export const updateMenu = async (id: number, data: UpdateMenuInput) => {
+export const updateMenu = async (id: string, data: UpdateMenuInput) => {
     const menu = await MenuRepository.findMenuById(id);
     if (!menu) {
         throw new AppError('Menu not found', 404);
@@ -73,7 +73,7 @@ export const updateMenu = async (id: number, data: UpdateMenuInput) => {
     return updatedMenu;
 };
 
-export const deleteMenu = async (id: number) => {
+export const deleteMenu = async (id: string) => {
     const menu = await MenuRepository.findMenuById(id);
     if (!menu) {
         throw new AppError('Menu not found', 404);

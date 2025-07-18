@@ -5,6 +5,8 @@ import app from "../src/app";
 describe("User Routes", () => {
   // Bersihkan tabel sebelum & sesudah test
   beforeEach(async () => {
+    await db.transactionItem.deleteMany();
+    await db.transaction.deleteMany();
     await db.user.deleteMany();
   });
 

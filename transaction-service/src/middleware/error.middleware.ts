@@ -19,11 +19,12 @@ export const errorHandler = (
     res: Response,
     next: NextFunction
 ): void => {
+    console.log(err);
+
     let statusCode: number = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string = Messages.INTERNAL_ERROR;
     let errors: any[] | undefined;
 
-    // ─── Handle Zod Validation Error ─────────────────────────────────
     if (err instanceof ZodError) {
         statusCode = HttpStatus.BAD_REQUEST;
         message = "Invalid input data.";
@@ -33,7 +34,6 @@ export const errorHandler = (
         }));
     }
 
-    // ─── JWT Errors ─────────────────────────────────────────────────
     else if (err.name === 'JsonWebTokenError') {
         statusCode = HttpStatus.UNAUTHORIZED;
         message = "Invalid token";
@@ -42,7 +42,6 @@ export const errorHandler = (
         message = "Token expired";
     }
 
-    // ─── Multer Error (File Upload) ─────────────────────────────────
     else if (err instanceof MulterError) {
         statusCode = HttpStatus.BAD_REQUEST;
         message = err.message || "File upload failed";
@@ -66,20 +65,17 @@ export const errorHandler = (
         }
     }
 
-    // ─── AppError (Custom Error) ────────────────────────────────────
     else if (err instanceof AppError) {
         statusCode = err.statusCode ?? HttpStatus.INTERNAL_SERVER_ERROR;
         message = err.message;
         errors = err.errors;
     }
 
-    // ─── Body Parser JSON Syntax Error ──────────────────────────────
     else if (err instanceof SyntaxError && 'body' in err) {
         statusCode = HttpStatus.BAD_REQUEST;
         message = 'Invalid JSON in request body';
     }
 
-    // ─── Log Error ──────────────────────────────────────────────────
     logger.error('Unhandled Error', {
         message: err.message,
         stack: err.stack,
@@ -90,7 +86,6 @@ export const errorHandler = (
         statusCode,
     });
 
-    // ─── Send Error Response ────────────────────────────────────────
     ResponseUtil.error(res, message, errors, statusCode);
 };
 

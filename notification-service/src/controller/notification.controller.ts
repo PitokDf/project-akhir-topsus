@@ -29,11 +29,11 @@ export const publishMessage = async (req: Request, res: Response, next: NextFunc
 
         logger.info(`Message published to exchange '${EXCHANGE_NAME}' with routing key '${routingKey}'`);
 
-        res.status(HttpStatusCode.OK).json({
+        return res.status(HttpStatusCode.OK).json({
             status: 'success',
             message: 'Message published successfully.',
         });
     } catch (error) {
-        next(error);
+        return next(error);
     }
 };

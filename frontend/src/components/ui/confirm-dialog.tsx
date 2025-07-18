@@ -9,7 +9,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button, ButtonProps } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
+// If ButtonProps is not exported, use the following type for variant:
+type ButtonProps = React.ComponentProps<typeof Button>;
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface ConfirmDialogProps {

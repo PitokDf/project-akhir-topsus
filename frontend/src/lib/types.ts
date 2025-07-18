@@ -116,3 +116,12 @@ export interface Item {
   priceAtSale: number
   itemTotal: number
 }
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}

@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - Cafe Cashier System
+name: CI/CD Pipeline - Build, Push, and Deploy
 
 on:
   push:
@@ -8,20 +8,10 @@ on:
     branches:
       - main
 
-env:
-  # Environment variables global for this workflow
-  # These are directly accessible in 'run' scripts as shell variables (e.g., $JWT_SECRET)
-  # or via ${{ env.VAR_NAME }} in GitHub Actions expressions.
-  JWT_SECRET: ${{ secrets.JWT_SECRET }}
-  DB_USER: ${{ secrets.DB_USER }}
-  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-  MAIN_DB_URL_VAR: postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/maindb
-
 jobs:
-  build_and_test:
-    name: Build & Test Services
+  test:
+    name: Test Services
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,8 +20,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "18"
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
 
-      # Install and Cache dependencies for all services
       - name: Install dependencies
         run: |
           services=(auth-service menu-service transaction-service report-service migration-service frontend)
@@ -39,48 +30,68 @@ jobs:
             echo "Installing dependencies for $service..."
             npm --prefix "$service" ci
           done
-        # No caching defined explicitly here; 'npm ci' ensures clean install on each run for CI.
-        # If build times become an issue, re-introduce caching per service.
 
-      # Prisma Generate for all services (needs to be run where schema.prisma exists)
       - name: Prisma Generate for Services
         run: |
           services=(auth-service menu-service transaction-service report-service migration-service)
           for service in "${services[@]}"; do
-            echo "Generating Prisma client for $service..."
-            npx prisma generate --schema "$service/prisma/schema.prisma"
+            if [ -f "$service/prisma/schema.prisma" ]; then
+              echo "Generating Prisma client for $service..."
+              npx prisma generate --schema "$service/prisma/schema.prisma"
+            fi
           done
 
-      # Example testing steps (implement your actual tests here)
-      # - name: Run Auth Service Tests
-      #   run: npm test
-      #   working-directory: ./auth-service
+      - name: Run Tests
+        run: |
+          services=(auth-service menu-service transaction-service report-service)
+          for service in "${services[@]}"; do
+            if [ -f "$service/package.json" ]; then
+              echo "Running tests for $service..."
+              npm --prefix "$service" test
+            fi
+          done
 
-      # - name: Run Frontend Tests
-      #   run: npm test
-      #   working-directory: ./frontend
-
-  deploy:
-    name: Deploy to Production
+  build-and-push:
+    name: Build and Push to Docker Hub
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    needs: build_and_test # Ensure build and test passed before deploying
-
+    strategy:
+      matrix:
+        service:
+          [
+            nginx,
+            auth-service,
+            frontend,
+            menu-service,
+            notification-service,
+            report-service,
+            transaction-service,
+            migration-service,
+          ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to Docker Hub
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Docker images
-        # We build here but don't push to a registry to simplify.
-        # Images will be transferred via SSH context if server has docker.
-        # If you want to use a registry, add docker tag & push for each image.
-        run: docker compose build
+      - name: Build and push Docker image for ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
 
+  deploy:
+    name: Deploy to Production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to Server via SSH
         uses: appleboy/ssh-action@master
         with:
@@ -88,35 +99,31 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            PROJECT_PATH="/path/to/your/project/on/server" # <<-- GANTI INI DENGAN PATH ASLI DI SERVER ANDA
+            PROJECT_PATH="/home/pitok/project-akhir-topsus"
 
-            mkdir -p "$PROJECT_PATH"
-            cd "$PROJECT_PATH"
+            # Navigate to project directory, or clone if it doesn't exist
+            if [ -d "$PROJECT_PATH" ]; then
+              cd "$PROJECT_PATH"
+              git pull origin main
+            else
+              git clone https://github.com/${{ github.repository }}.git "$PROJECT_PATH"
+              cd "$PROJECT_PATH"
+            fi
 
-            # Create or update .env file on the server from GitHub Secrets
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" > .env
-            echo "DB_USER=${{ secrets.DB_USER }}" >> .env
-            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-            echo "MAIN_DB_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/maindb" >> .env
-            echo "AUTH_SERVICE_DB_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/maindb" >> .env
-            echo "MENU_SERVICE_DB_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/maindb" >> .env
-            echo "TRANSACTION_SERVICE_DB_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/maindb" >> .env
-            echo "REPORT_SERVICE_DB_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/maindb" >> .env
-            echo "NEXT_PUBLIC_API_BASE_URL=http://localhost" >> frontend/.env.local # Untuk frontend di server
+            # Create or update .env file
+            echo "${{ secrets.ENV_FILE_PROD }}" > .env
 
-            # Copy all project files to the server, excluding git and node_modules
-            rsync -avz --exclude '.git/' --exclude '**/node_modules/' --exclude '**/prisma/migrations/' --exclude '**/prisma/dev.db' \
-                  --exclude 'frontend/.next/' --exclude 'frontend/out/' --exclude 'frontend/.env.local' \
-                  "$GITHUB_WORKSPACE/" "$PROJECT_PATH/"
+            # Login to Docker Hub
+            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
-            # Stop and remove old containers, anonymous volumes
-            docker compose -f "$PROJECT_PATH/docker-compose.yml" down -v --remove-orphans || true
+            # Pull the latest images
+            docker-compose pull
 
-            # Build and run containers
-            # --build: forces rebuilding images on the server if context changes
-            # -d: run in detached mode
-            docker compose -f "$PROJECT_PATH/docker-compose.yml" up --build -d
+            # Run database migrations
+            docker-compose run --rm migration-service
+
+            # Start all other services
+            docker-compose up -d --remove-orphans
 
             # Clean up dangling images
             docker image prune -f
-            docker builder prune -f # Clean build cache

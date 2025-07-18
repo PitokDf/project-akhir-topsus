@@ -12,7 +12,7 @@ export async function getStatistics() {
         ]);
 
         const { totalMenu, totalCategory } = menuStats.data.data;
-        const { todayIncome, todayTransaction } = transactionStats.data.data;
+        const { todayIncome, todayTransaction } = transactionStats.data.data.data;
 
         return {
             totalMenu,

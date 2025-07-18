@@ -5,6 +5,9 @@ import logger from '../utils/winston.logger';
 class RabbitMQService {
     private connection: any | null = null;
     private channel: Channel | null = null;
+    private retryAttempts = 0;
+    private maxRetryAttempts = 10;
+    private retryDelay = 5000; // 5 seconds
 
     public async connect(): Promise<void> {
         try {
@@ -17,10 +20,11 @@ class RabbitMQService {
             this.channel = await this.connection.createChannel();
 
             logger.info('Successfully connected to RabbitMQ and channel created.');
+            this.retryAttempts = 0; // Reset retry attempts on successful connection
 
             this.connection.on('error', (err: any) => {
                 logger.error('RabbitMQ connection error', err);
-                this.reconnect();
+                if (!this.connection?.close) this.reconnect();
             });
 
             this.connection.on('close', () => {
@@ -29,15 +33,21 @@ class RabbitMQService {
             });
 
         } catch (error) {
-            logger.error('Failed to connect to RabbitMQ', error);
-            setTimeout(() => this.reconnect(), 5000);
+            logger.error(`Failed to connect to RabbitMQ: ${(error as Error).message}`);
+            this.reconnect();
         }
     }
 
     private async reconnect(): Promise<void> {
-        this.channel = null;
-        this.connection = null;
-        await this.connect();
+        if (this.retryAttempts < this.maxRetryAttempts) {
+            this.retryAttempts++;
+            const delay = this.retryDelay * Math.pow(2, this.retryAttempts - 1);
+            logger.info(`Attempting to reconnect to RabbitMQ in ${delay / 1000} seconds... (Attempt ${this.retryAttempts}/${this.maxRetryAttempts})`);
+
+            setTimeout(() => this.connect(), delay);
+        } else {
+            logger.error('Max retry attempts reached. Could not connect to RabbitMQ.');
+        }
     }
 
     public getChannel(): Channel {

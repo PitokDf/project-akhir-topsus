@@ -53,7 +53,7 @@ export const generateSalesReportPdf = async (options: ReportRepository.ReportDat
 
         autoTable(doc, {
             head: [['Peringkat', 'Nama Produk', 'Kategori', 'Jumlah Terjual', 'Pendapatan']],
-            body: topSellingProducts.map(p => [
+            body: topSellingProducts.map((p: { rank: any; name: any; category: any; quantitySold: any; totalRevenue: number; }) => [
                 p.rank,
                 p.name,
                 p.category,
@@ -75,7 +75,7 @@ export const generateSalesReportPdf = async (options: ReportRepository.ReportDat
 
     autoTable(doc, {
         head: [['ID', 'Tanggal', 'Waktu', 'Kasir', 'Total']],
-        body: transactions.map(t => [
+        body: transactions.map((t: { id: any; transactionDate: string | number | Date; user: { name: any; }; totalAmount: number; }) => [
             t.id,
             new Date(t.transactionDate).toLocaleDateString('id-ID'),
             new Date(t.transactionDate).toLocaleTimeString('id-ID'),

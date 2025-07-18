@@ -1,0 +1,41 @@
+@startuml C4_Container_Diagram
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Container diagram for Point of Sale System
+
+Person(admin, "Admin", "Seorang administrator yang mengelola sistem.")
+Person(cashier, "Cashier", "Seorang kasir yang menggunakan sistem untuk transaksi.")
+
+System_Boundary(b, "Point of Sale System") {
+    Container(frontend, "Frontend", "Next.js, TypeScript", "Menyediakan fungsionalitas antarmuka pengguna melalui web.")
+    Container(nginx, "Nginx", "Nginx", "Reverse proxy dan melayani aset statis frontend.")
+    Container(auth_service, "Auth Service", "Node.js, TypeScript", "Mengelola otentikasi dan otorisasi pengguna.")
+    Container(menu_service, "Menu Service", "Node.js, TypeScript", "Mengelola produk dan kategori menu.")
+    Container(transaction_service, "Transaction Service", "Node.js, TypeScript", "Memproses transaksi penjualan.")
+    Container(notification_service, "Notification Service", "Node.js, TypeScript", "Mendengarkan event transaksi dan mengirim pembaruan real-time ke frontend melalui WebSocket.")
+    Container(report_service, "Report Service", "Node.js, TypeScript", "Menghasilkan laporan penjualan dan analitik.")
+
+    ContainerDb(database, "Database", "PostgreSQL", "Menyimpan semua data aplikasi (pengguna, menu, transaksi, dll).")
+}
+
+' Relationships
+Rel(cashier, nginx, "Menggunakan", "HTTPS")
+Rel(admin, nginx, "Menggunakan", "HTTPS")
+
+Rel(nginx, frontend, "Melayani", "HTTPS")
+Rel(nginx, auth_service, "API Requests", "HTTPS")
+Rel(nginx, menu_service, "API Requests", "HTTPS")
+Rel(nginx, transaction_service, "API Requests", "HTTPS")
+Rel(nginx, report_service, "API Requests", "HTTPS")
+
+Rel(auth_service, database, "Membaca/Menulis", "TCP")
+Rel(menu_service, database, "Membaca/Menulis", "TCP")
+Rel(transaction_service, database, "Membaca/Menulis", "TCP")
+Rel(report_service, database, "Membaca", "TCP")
+
+Rel(transaction_service, notification_service, "Memberi tahu event transaksi", "AMQP")
+Rel(notification_service, frontend, "Mengirim pembaruan", "WebSocket")
+
+@enduml

@@ -10,7 +10,9 @@ export default function HomePage() {
 
   useEffect(() => {
     const user = AuthService.getCurrentUser();
-    
+    console.log("HOSTNAMES: ", process.env.NEXT_PUBLIC_API_HOSTNAMES);
+    console.log("HOSTNAMES: ", process.env.NEXT_PUBLIC_API_BASE_URL);
+
     if (!user) {
       router.push('/login');
     } else if (user.role === 'ADMIN') {

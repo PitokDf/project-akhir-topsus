@@ -28,6 +28,13 @@ export const getTransactionHandler = asyncHandler<{ id: string }>(
     }
 );
 
+export const getTransactionsHandler = asyncHandler(
+    async (req, res) => {
+        const transactions = await TransactionService.getAllTransactions(req.query);
+        return ResponseUtil.success(res, transactions);
+    }
+);
+
 export const updateTransactionStatusHandler = asyncHandler<{ id: string }, any, UpdateTransactionStatusInput>(
     async (req, res) => {
         const { id } = req.params;

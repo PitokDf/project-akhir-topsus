@@ -6,7 +6,12 @@ export const formatPrice = (price: number) => {
     }).format(price);
 };
 
-export const formatDate = (date: Date) => {
+export const formatDate = (input: string | Date | null | undefined): string => {
+    if (!input) return '-';
+
+    const date = new Date(input);
+    if (isNaN(date.getTime())) return '-';
+
     return new Intl.DateTimeFormat('id-ID', {
         year: 'numeric',
         month: 'short',

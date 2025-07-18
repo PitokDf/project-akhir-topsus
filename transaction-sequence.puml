@@ -1,0 +1,43 @@
+@startuml Transaction_Sequence
+autonumber
+
+actor "Cashier" as cashier
+participant "Frontend" as frontend
+participant "Nginx" as nginx
+participant "Transaction Service" as tx_service
+participant "Database" as db
+participant "Notification Service" as notify_service
+
+cashier -> frontend: 1. Membuat Transaksi (misal: memilih item, klik bayar)
+activate frontend
+
+frontend -> nginx: 2. POST /api/transactions
+activate nginx
+
+nginx -> tx_service: 3. Forward request
+activate tx_service
+
+tx_service -> db: 4. Membuat record Transaction & TransactionItem
+activate db
+db --> tx_service: 5. Record berhasil dibuat
+deactivate db
+
+tx_service -> notify_service: 6. Publish event "TRANSACTION_CREATED" (via Message Broker)
+activate notify_service
+
+tx_service --> nginx: 7. HTTP 201 Created
+deactivate tx_service
+
+nginx --> frontend: 8. HTTP 201 Created
+deactivate nginx
+
+frontend -> cashier: 9. Menampilkan notifikasi sukses
+deactivate frontend
+
+notify_service -> frontend: 10. Push notifikasi (via WebSocket)
+activate frontend
+frontend -> frontend: 11. Update UI (misal: daftar transaksi)
+deactivate frontend
+deactivate notify_service
+
+@enduml

@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button, type ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import type { LucideProps } from "lucide-react";
 import type { ComponentType } from "react";
@@ -14,7 +14,7 @@ interface ManagementCardProps {
     description: string;
     content: string;
     buttonText: string;
-    buttonVariant?: ButtonProps['variant'];
+    buttonVariant?: React.ComponentProps<typeof Button>['variant'];
     href?: string;
 }
 

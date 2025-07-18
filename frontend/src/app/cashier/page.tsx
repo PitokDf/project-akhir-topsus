@@ -149,8 +149,8 @@ export default function CashierPage() {
         <div className="lg:hidden fixed bottom-6 right-6 z-50">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="default" size="lg" className="rounded-full bg-blue-600 hover:bg-blue-700 h-16 w-16 shadow-lg flex items-center justify-center">
-                <ShoppingCart className="h-7 w-7 text-white" />
+              <Button variant="default" size="lg" className="rounded-full bg-blue-600 hover:bg-blue-700 h-13 w-13 shadow-lg flex items-center justify-center">
+                <ShoppingCart className="h-9 w-9 text-white" />
                 {totalItems > 0 && (
                   <Badge variant="destructive" className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center rounded-full text-xs">
                     {totalItems > 99 ? '99+' : totalItems}

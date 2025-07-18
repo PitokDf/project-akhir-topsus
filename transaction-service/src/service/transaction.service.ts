@@ -8,6 +8,7 @@ import { io } from '../app';
 
 export const createTransaction = async (input: CreateTransactionInput) => {
     const { items, paymentMethod, userId } = input;
+    console.log(items);
 
     // Get menu details and calculate totals
     const menuIds = items.map((item) => item.menuId);
@@ -33,7 +34,6 @@ export const createTransaction = async (input: CreateTransactionInput) => {
         };
     });
 
-    // Create transaction record in our database
     const transactionData = {
         userId,
         totalAmount,
@@ -109,6 +109,18 @@ export const updateTransactionStatus = async (id: string, status: 'PENDING' | 'S
     const updatedTransaction = await TransactionRepository.updateTransactionStatus(id, status);
     io.emit('transaction:update', updatedTransaction);
     return updatedTransaction;
+};
+
+export const getAllTransactions = async (query: any) => {
+    const { page = 1, limit = 10, search, status, paymentMethod } = query;
+    const options = {
+        page: Number(page),
+        limit: Number(limit),
+        search: search as string | undefined,
+        status: status as string | undefined,
+        paymentMethod: paymentMethod as string | undefined,
+    };
+    return TransactionRepository.findAll(options);
 };
 
 export const cancelTransaction = async (id: string) => {

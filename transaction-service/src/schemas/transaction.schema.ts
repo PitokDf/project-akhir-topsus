@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const createTransactionItemSchema = z.object({
-    menuId: z.number(),
+    menuId: z.string(),
     quantity: z.number().min(1),
 });
 

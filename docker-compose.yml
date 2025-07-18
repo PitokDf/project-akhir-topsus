@@ -1,88 +1,57 @@
-version: "3.8"
-
 services:
   nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME}/nginx:latest
     ports:
-      - "80:80" # Port 80 untuk akses web standar
-      - "443:443" # Port 443 untuk HTTPS (jika nanti dikonfigurasi)
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/uastopsus.conf:/etc/nginx/conf.d/default.conf:ro
       - ./menu-service/uploads:/usr/share/nginx/html/uploads:ro
-      # Tambahkan volume untuk sertifikat SSL di produksi jika menggunakan HTTPS
-      # - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
-      frontend:
-        condition: service_started # Nginx bisa mulai meski frontend masih loading
-      auth-service:
-        condition: service_started
-      menu-service:
-        condition: service_started
-      transaction-service:
-        condition: service_started
-      report-service:
-        condition: service_started
-      notification-service:
-        condition: service_started
+      - frontend
+      - auth-service
+      - menu-service
+      - transaction-service
+      - report-service
+      - notification-service
     networks:
       - cashiersystem-network
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    # Port ini hanya untuk debugging atau akses langsung saat dev,
-    # di produksi akan diakses via Nginx.
-    # - "3000:3000"
+    image: ${DOCKERHUB_USERNAME}/frontend:latest
+    env_file:
+      - ./frontend/.env
     environment:
-      # URL ini akan diresolve di dalam network Docker ke nama service Nginx
-      - NEXT_PUBLIC_API_BASE_URL=http://nginx
-      - NODE_ENV=production # Penting untuk build Next.js
+      - NEXT_PUBLIC_API_BASE_URL=http://api.cafe.com
+      - NODE_ENV=production
     depends_on:
-      # Frontend bergantung pada auth-service secara tidak langsung melalui Nginx,
-      # tapi bisa juga langsung bergantung untuk memastikan auth-service hidup sebelum frontend mencoba connect
-      auth-service:
-        condition: service_started
-    volumes:
-      # Mount volume untuk development, bisa dihapus/diubah di produksi
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - auth-service
     networks:
       - cashiersystem-network
 
   auth-service:
-    build:
-      context: ./auth-service
-      dockerfile: Dockerfile
-    # Port ini hanya untuk debugging atau akses langsung saat dev
-    # - "3001:3001"
+    image: ${DOCKERHUB_USERNAME}/auth-service:latest
+    env_file:
+      - ./auth-service/.env
     environment:
       - PORT=3001
       - JWT_SECRET=${JWT_SECRET}
-      - DATABASE_URL=${AUTH_SERVICE_DB_URL}
+      - DATABASE_URL=${MAIN_DB_URL}
     depends_on:
       db:
-        condition: service_healthy # Pastikan DB siap
+        condition: service_healthy
       migration-service:
-        condition: service_completed_successfully # Pastikan migrasi selesai sebelum service ini jalan
-    volumes:
-      - ./auth-service:/usr/src/app
-      - /usr/src/app/node_modules
-      - ./auth-service/prisma:/usr/src/app/prisma # Pastikan folder prisma juga di-mount
+        condition: service_completed_successfully
     networks:
       - cashiersystem-network
 
   menu-service:
-    build:
-      context: ./menu-service
-      dockerfile: Dockerfile
-    # - "3002:3002"
+    image: ${DOCKERHUB_USERNAME}/menu-service:latest
+    env_file:
+      - ./menu-service/.env
     environment:
       - PORT=3002
-      - DATABASE_URL=${MENU_SERVICE_DB_URL}
+      - DATABASE_URL=${MAIN_DB_URL}
       - REDIS_URL=redis://redis:6379
     depends_on:
       redis:
@@ -92,107 +61,88 @@ services:
       migration-service:
         condition: service_completed_successfully
     volumes:
-      - ./menu-service:/usr/src/app
-      - /usr/src/app/node_modules
-      - ./menu-service/prisma:/usr/src/app/prisma
       - ./menu-service/uploads:/usr/src/app/uploads
     networks:
       - cashiersystem-network
 
   transaction-service:
-    build:
-      context: ./transaction-service
-      dockerfile: Dockerfile
-    # - "3003:3003"
+    image: ${DOCKERHUB_USERNAME}/transaction-service:latest
+    env_file:
+      - ./transaction-service/.env
     environment:
       - PORT=3003
-      - DATABASE_URL=${TRANSACTION_SERVICE_DB_URL}
+      - DATABASE_URL=${MAIN_DB_URL}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
+      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
     depends_on:
       db:
         condition: service_healthy
       migration-service:
         condition: service_completed_successfully
-    volumes:
-      - ./transaction-service:/usr/src/app
-      - /usr/src/app/node_modules
-      - ./transaction-service/prisma:/usr/src/app/prisma
     networks:
       - cashiersystem-network
 
   report-service:
-    build:
-      context: ./report-service
-      dockerfile: Dockerfile
-    # - "3004:3004"
+    image: ${DOCKERHUB_USERNAME}/report-service:latest
+    env_file:
+      - ./report-service/.env
     environment:
       - PORT=3004
-      - DATABASE_URL=${REPORT_SERVICE_DB_URL}
+      - DATABASE_URL=${MAIN_DB_URL}
+      - MENU_SERVICE_URL=http://menu-service:3002/api/v1
+      - TRANSACTION_SERVICE_URL=http://transaction-service:3003/api/v1
     depends_on:
       db:
         condition: service_healthy
       migration-service:
         condition: service_completed_successfully
-    volumes:
-      - ./report-service:/usr/src/app
-      - /usr/src/app/node_modules
-      - ./report-service/prisma:/usr/src/app/prisma
     networks:
       - cashiersystem-network
 
   notification-service:
-    build:
-      context: ./notification-service
-      dockerfile: Dockerfile
-    # - "4005:4005"
+    image: ${DOCKERHUB_USERNAME}/notification-service:latest
+    env_file:
+      - ./notification-service/.env
     environment:
       - PORT=4005
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
     depends_on:
-      rabbitmq:
-        condition: service_started
-    volumes:
-      - ./notification-service:/usr/src/app
-      - /usr/src/app/node_modules
+      - rabbitmq
     networks:
       - cashiersystem-network
 
   db:
     image: postgres:14-alpine
     container_name: postgres_db
-    restart: unless-stopped # Penting untuk produksi, agar restart jika crash
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: maindb
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      - POSTGRES_DB=maindb
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Volume persisten untuk data DB
-      # init.sql dihapus karena migrasi ditangani oleh migration-service
+      - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432" # Hanya untuk akses lokal/debugging, diubah ke 5433
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 10s # Beri waktu lebih lama untuk DB start up pertama kali
+      start_period: 10s
     networks:
       - cashiersystem-network
 
   migration-service:
-    build:
-      context: ./migration-service
-      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME}/migration-service:latest
+    env_file:
+      - ./migration-service/.env
     environment:
       - DATABASE_URL=${MAIN_DB_URL}
     depends_on:
       db:
-        condition: service_healthy # Pastikan DB siap sebelum migrasi
-    # Jalankan migrasi dan keluar. Docker Compose akan menandai service ini "completed successfully"
+        condition: service_healthy
     command: ["npx", "prisma", "migrate", "deploy"]
-    volumes:
-      - ./migration-service:/usr/src/app
-      - /usr/src/app/node_modules
-      - ./migration-service/prisma:/usr/src/app/prisma # Penting: Pastikan folder prisma/migrations di-mount
     networks:
       - cashiersystem-network
 
@@ -200,8 +150,8 @@ services:
     image: rabbitmq:3.13-management
     container_name: rabbitmq
     ports:
-      - "5672:5672" # Port untuk koneksi AMQP
-      - "15672:15672" # Port untuk UI Management
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:

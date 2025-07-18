@@ -1,0 +1,32 @@
+@startuml UseCaseDiagram
+
+left to right direction
+
+actor "Admin" as admin
+actor "Cashier" as cashier
+
+rectangle "Point of Sale System" {
+  usecase "Login" as UC_LOGIN
+  usecase "Process Sale" as UC_SALE
+  usecase "Manage Users" as UC_USERS
+  usecase "Manage Menu Items" as UC_MENU
+  usecase "Manage Categories" as UC_CATEGORIES
+  usecase "View Transaction History" as UC_HISTORY
+  usecase "View Sales Reports" as UC_REPORTS
+}
+
+' --- Actor Relationships ---
+
+' Cashier's capabilities
+cashier -- UC_LOGIN
+cashier -- UC_SALE
+
+' Admin's capabilities
+admin -- UC_LOGIN
+admin -- UC_USERS
+admin -- UC_MENU
+admin -- UC_CATEGORIES
+admin -- UC_HISTORY
+admin -- UC_REPORTS
+
+@enduml

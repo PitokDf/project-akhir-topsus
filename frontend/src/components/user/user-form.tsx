@@ -29,7 +29,7 @@ const userFormSchema = z.object({
     name: z.string().min(3, { message: 'Nama lengkap minimal 3 karakter.' }),
     email: z.string().email({ message: 'Format email tidak valid.' }),
     password: z.string().min(8, 'Password minimal 8 karakter.').optional().or(z.literal('')),
-    role: z.enum(['ADMIN', 'CASHIER'], { required_error: 'Role harus dipilih.' }),
+    role: z.enum(['ADMIN', 'CASHIER'], { message: 'Role harus dipilih.' }),
 }).refine(data => {
     return true;
 });

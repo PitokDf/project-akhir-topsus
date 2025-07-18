@@ -1,9 +1,14 @@
 import { db } from "../config/prisma";
+import { Menu } from "@prisma/client";
 
 export interface ReportDataOptions {
     startDate: Date;
     endDate: Date;
 }
+
+type MenuDetail = Pick<Menu, 'id' | 'name'> & {
+    category: { name: string; } | null;
+};
 
 export const getSalesReport = async (options: ReportDataOptions) => {
     const { startDate, endDate } = options;
@@ -48,19 +53,31 @@ export const getSalesReport = async (options: ReportDataOptions) => {
         take: 10,
     });
 
-    const topMenuIds = topSellingItemsRaw.map(item => item.menuId);
-    const menuDetails = await db.menu.findMany({
+    const topMenuIds = topSellingItemsRaw.map((item) => item.menuId);
+
+    const menuDetails: MenuDetail[] = await db.menu.findMany({
         where: { id: { in: topMenuIds } },
-        include: { category: { select: { name: true } } },
+        select: {
+            id: true,
+            name: true,
+            category: {
+                select: {
+                    name: true
+                }
+            }
+        }
     });
-    const menuDetailsMap = new Map(menuDetails.map(menu => [menu.id, menu]));
+
+    const menuDetailsMap = new Map<number, MenuDetail>(
+        menuDetails.map((menu) => [menu.id, menu])
+    );
 
     const topSellingProducts = topSellingItemsRaw.map((item, index) => {
         const menu = menuDetailsMap.get(item.menuId);
         return {
             rank: index + 1,
-            name: menu?.name || 'Produk Dihapus',
-            category: menu?.category.name || 'N/A',
+            name: menu?.name ?? 'Produk Dihapus',
+            category: menu?.category?.name ?? 'N/A',
             quantitySold: item._sum.quantity || 0,
             totalRevenue: item._sum.itemTotal || 0,
         };

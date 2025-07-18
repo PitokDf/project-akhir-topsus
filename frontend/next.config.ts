@@ -2,7 +2,20 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: process.env.HOSTNAMES ? process.env.HOSTNAMES.split(',') : [],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'api.cafe.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.sandbox.midtrans.com',
+      },
+    ],
   },
 };
 
