@@ -121,12 +121,11 @@ export function MenuTable({
                                                 <div className="w-16 h-16 relative bg-muted rounded-md overflow-hidden flex items-center justify-center">
 
                                                     {menu.imageUrl && !imageErrors.has(menu.imageUrl) ? (
-                                                        <Image
+                                                        <img
                                                             src={menu.imageUrl}
-                                                            alt={menu.name}
-                                                            fill
-                                                            className="object-cover"
-                                                            onError={() => handleImageError(menu.imageUrl!)}
+                                                            alt="QR Code"
+                                                            width={256}
+                                                            height={256}
                                                         />
                                                     ) : (
                                                         <ImageOff className="h-6 w-6 text-muted-foreground" />

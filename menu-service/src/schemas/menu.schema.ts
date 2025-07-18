@@ -21,7 +21,7 @@ export const updateMenuSchema = z.object({
         isActive: z.boolean().optional(),
     }),
     params: z.object({
-        id: z.string().refine((val) => !isNaN(parseInt(val, 10)), { message: "Id must be a number" }),
+        id: z.string(),
     }),
 });
 

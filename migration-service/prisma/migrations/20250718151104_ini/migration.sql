@@ -25,9 +25,10 @@ CREATE TABLE "categories" (
 
 -- CreateTable
 CREATE TABLE "menus" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
+    "stock" INTEGER NOT NULL DEFAULT 0,
     "price" DOUBLE PRECISION NOT NULL,
     "category_id" INTEGER NOT NULL,
     "image_url" TEXT,
@@ -40,24 +41,27 @@ CREATE TABLE "menus" (
 
 -- CreateTable
 CREATE TABLE "transactions" (
-    "id" SERIAL NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "id" TEXT NOT NULL,
+    "total_amount" DOUBLE PRECISION NOT NULL,
+    "payment_method" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
     "transaction_date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "totalAmount" DOUBLE PRECISION NOT NULL,
-    "payment_method" TEXT NOT NULL DEFAULT 'cash',
-    "status" TEXT NOT NULL DEFAULT 'completed',
+    "user_id" TEXT NOT NULL,
+    "payment_gateway_id" TEXT,
+    "payment_gateway_url" TEXT,
+    "paymentToken" TEXT,
 
     CONSTRAINT "transactions_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "transaction_items" (
-    "id" SERIAL NOT NULL,
-    "transaction_id" INTEGER NOT NULL,
-    "menu_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
-    "price_at_sale" DOUBLE PRECISION NOT NULL,
     "item_total" DOUBLE PRECISION NOT NULL,
+    "transaction_id" TEXT NOT NULL,
+    "menu_id" TEXT NOT NULL,
+    "priceAtSale" DOUBLE PRECISION NOT NULL,
 
     CONSTRAINT "transaction_items_pkey" PRIMARY KEY ("id")
 );
@@ -73,6 +77,9 @@ CREATE UNIQUE INDEX "categories_name_key" ON "categories"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "menus_name_key" ON "menus"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "transactions_payment_gateway_id_key" ON "transactions"("payment_gateway_id");
 
 -- AddForeignKey
 ALTER TABLE "menus" ADD CONSTRAINT "menus_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

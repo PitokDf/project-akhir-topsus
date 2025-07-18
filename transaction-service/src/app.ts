@@ -14,6 +14,8 @@ import { Server } from "socket.io"
 
 const app = express()
 const server = http.createServer(app)
+console.log(config.NODE_ENV);
+
 export const io = new Server(server, {
     cors: {
         origin: config.NODE_ENV === "production" ? config.CLIENT_URL : "*",

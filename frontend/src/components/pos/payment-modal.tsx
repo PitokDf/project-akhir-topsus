@@ -250,16 +250,12 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
 
             <div className="flex justify-center">
               {qrisUrl ? (
-                <div className="p-4 bg-white border-2 border-gray-300 rounded-lg">
-                  <Image
-                    src={qrisUrl}
-                    alt="QRIS Code"
-                    width={200}
-                    height={200}
-                    className="mx-auto"
-                    priority
-                  />
-                </div>
+                <img
+                  src={qrisUrl}
+                  alt="QR Code"
+                  width={256}
+                  height={256}
+                />
               ) : <LoadingSpinner size="lg" />}
             </div>
 
