@@ -19,6 +19,7 @@ export const getSalesReport = async (options: ReportDataOptions) => {
                 gte: startDate,
                 lte: endDate,
             },
+            status: 'SUCCESS',
         },
         include: {
             user: { select: { name: true } },
@@ -39,6 +40,7 @@ export const getSalesReport = async (options: ReportDataOptions) => {
                     gte: startDate,
                     lte: endDate,
                 },
+                status: 'SUCCESS',
             },
         },
         _sum: {
@@ -68,7 +70,7 @@ export const getSalesReport = async (options: ReportDataOptions) => {
         }
     });
 
-    const menuDetailsMap = new Map<number, MenuDetail>(
+    const menuDetailsMap = new Map(
         menuDetails.map((menu) => [menu.id, menu])
     );
 

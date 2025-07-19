@@ -1,7 +1,7 @@
 import { networkInterfaces } from "node:os";
-import app from "./app";
 import { config } from "./config";
 import { connectRedis } from "./config/redis";
+import app from "./app";
 
 function getNetworkAdresses(): string[] {
     const nets = networkInterfaces();

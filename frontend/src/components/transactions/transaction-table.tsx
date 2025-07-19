@@ -135,7 +135,8 @@ export function TransactionTable({
                                                 </div>
                                             </TableCell>
                                             <TableCell className="hidden sm:table-cell">
-                                                {getStatusBadge(transaction.status)}
+                                                {/* {getStatusBadge(transaction.status)} */}
+                                                {transaction.status}
                                             </TableCell>
                                             <TableCell>
                                                 <Button

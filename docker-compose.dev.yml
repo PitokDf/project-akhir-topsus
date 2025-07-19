@@ -27,6 +27,7 @@ services:
       args:
         # Teruskan variabel yang dibutuhkan saat build
         - NEXT_PUBLIC_API_URL=http://api.cafe.com # Contoh
+        - NEXT_PUBLIC_TRANSACTION_SERVICE_URL=http://api.cafe.com
     ports:
       - "3000:3000"
     # TIDAK ADA VOLUMES UNTUK KODE DI PRODUKSI
@@ -180,6 +181,8 @@ services:
     build:
       context: ./migration-service
       dockerfile: Dockerfile
+    volumes:
+      - ./migration-service/prisma:/usr/src/app/prisma
     environment:
       - DATABASE_URL=postgresql://postgres:121203@db:5432/uas-topsus?schema=public
     command: npx prisma migrate deploy
@@ -213,6 +216,20 @@ services:
       - "6379:6379"
     volumes:
       - redis_data_dev:/data
+    networks:
+      - cashiersystem-network
+
+  ngrok:
+    build:
+      context: ./ngrok
+      dockerfile: Dockerfile
+    ports:
+      - "4040:4040"
+    command: start api --config /etc/ngrok/ngrok.yml
+    env_file:
+      - .env
+    depends_on:
+      - nginx
     networks:
       - cashiersystem-network
 

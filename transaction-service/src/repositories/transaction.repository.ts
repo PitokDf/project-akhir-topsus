@@ -62,7 +62,7 @@ export const getTodayIncome = async (startDate: Date, endDate: Date) => {
                 gte: startDate,
                 lt: endDate,
             },
-            status: 'completed',
+            status: 'SUCCESS',
         },
     });
     return result._sum?.totalAmount || 0;
@@ -75,6 +75,7 @@ export const getTodayTransactionCount = async (startDate: Date, endDate: Date) =
                 gte: startDate,
                 lt: endDate,
             },
+            status: 'SUCCESS',
         },
     });
 };

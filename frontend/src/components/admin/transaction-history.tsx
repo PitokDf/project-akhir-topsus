@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import { Transaction, Stats } from '@/lib/types';
 import { transactionService } from '@/lib/service/transaction';
 import { TransactionSummaryCards } from '../transactions/transaction-summary-card';
@@ -58,6 +59,33 @@ export function TransactionHistory() {
 
     fetchTransactions();
     fetchStats();
+
+    const socket = io(process.env.NEXT_PUBLIC_TRANSACTION_SERVICE_URL || 'http://localhost:3003');
+
+    socket.on('connect', () => {
+      console.log('Socket.IO connected');
+    });
+
+    socket.on('transaction:update', (updatedTransaction: Transaction) => {
+      console.log('Transaction updated:', updatedTransaction);
+      setTransactions(prevTransactions =>
+        prevTransactions.map(t =>
+          t.id === updatedTransaction.id ? updatedTransaction : t
+        )
+      );
+      // Optionally, re-fetch stats if a transaction is completed
+      if (updatedTransaction.status === 'completed') {
+        fetchStats();
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [page, debouncedSearchTerm, statusFilter, paymentFilter]);
 
   return (

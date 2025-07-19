@@ -53,7 +53,7 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
     // Don't establish socket connection if modal is not open
     if (!open) return;
 
-    const socket = io(process.env.NEXT_PUBLIC_TRANSACTION_SERVICE_URL || 'http://localhost:3003');
+    const socket = io(process.env.NEXT_PUBLIC_TRANSACTION_SERVICE_URL!);
 
     socket.on('connect', () => {
       console.log('Connected to transaction service socket');

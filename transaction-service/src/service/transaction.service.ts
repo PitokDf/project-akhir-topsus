@@ -102,6 +102,8 @@ export const getTransactionStats = async () => {
 
 export const updateTransactionStatus = async (id: string, status: 'PENDING' | 'SUCCESS' | 'CANCELLED' | 'FAILED' | 'EXPIRED') => {
     const transaction = await TransactionRepository.findTransactionById(id);
+    console.log(transaction);
+
     if (!transaction) {
         throw new AppError('Transaction not found', HttpStatus.NOT_FOUND);
     }

@@ -172,14 +172,7 @@ export function MenuForm({ initialData, categories, onSubmit, onCancel, isSubmit
                                     <Input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
                                     {imagePreview ? (
                                         <div className="relative w-full aspect-square max-w-xs mx-auto">
-                                            <img
-                                                src={imagePreview}
-                                                alt="Preview"
-                                                width={256}
-                                                height={256}
-                                                className="object-cover rounded-md"
-                                            />
-                                            {/* <Image src={imagePreview} alt="Preview" fill className="object-cover rounded-md" /> */}
+                                            <Image src={imagePreview} alt="Preview" fill className="object-cover rounded-md" />
                                             <button type="button" onClick={handleRemoveImage} className="absolute top-1 right-1 bg-background/80 p-1 rounded-full shadow-md backdrop-blur-sm">
                                                 <X className="h-4 w-4 text-destructive" />
                                             </button>

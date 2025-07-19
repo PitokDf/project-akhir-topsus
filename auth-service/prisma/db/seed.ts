@@ -4,7 +4,7 @@ import { BcryptUtil } from '../../src/utils';
 const prisma = new PrismaClient();
 
 async function main() {
-    const email = 'admin@example.com';
+    const email = 'admin@gmail.com';
 
     // Periksa apakah user sudah ada
     const existingUser = await prisma.user.findUnique({
@@ -18,6 +18,7 @@ async function main() {
             data: {
                 name: 'Admin',
                 email,
+                role: "ADMIN",
                 password: hashedPassword,
             },
         });

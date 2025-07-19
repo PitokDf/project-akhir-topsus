@@ -25,6 +25,7 @@ const translateStatus = (midtransStatus: string): 'PENDING' | 'SUCCESS' | 'CANCE
 };
 
 export const startPaymentWorker = async () => {
+    logger.info('Starting payment worker...');
     try {
         const channel = rabbitMQService.getChannel();
 
@@ -61,7 +62,10 @@ export const startPaymentWorker = async () => {
                 }
             }
         }, { noAck: false });
-    } catch (error) {
-        logger.error('Failed to start payment worker', error);
+    } catch (error: any) {
+        logger.error('Failed to start payment worker', {
+            message: error.message,
+            stack: error.stack,
+        });
     }
 };

@@ -5,6 +5,8 @@ import { ResponseUtil } from '../utils/response';
 
 export const getSalesReport = asyncHandler(async (req: Request, res: Response) => {
     const { startDate, endDate } = getDatesFromQuery(req);
+    console.log(startDate, endDate);
+
     const report = await ReportService.getSalesReport({ startDate, endDate });
     return ResponseUtil.success(res, report);
 });

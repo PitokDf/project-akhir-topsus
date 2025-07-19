@@ -73,11 +73,11 @@ export function ProductCard({ menu }: ProductCardProps) {
       <CardContent className="p-0 flex flex-col h-full">
         <div className="relative h-32 w-full bg-gray-100">
           {menu.imageUrl ? (
-            <img
+            <Image
               src={menu.imageUrl}
-              alt="QR Code"
-              width={256}
-              height={256}
+              alt={menu.name}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
             <div className="h-full w-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">

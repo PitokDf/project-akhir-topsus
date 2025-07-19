@@ -55,7 +55,7 @@ model Menu {
 
 model Transaction {
   id               String            @id @default(cuid())
-  totalAmount      Float             @map("total_amount")
+  totalAmount      Float
   paymentMethod    String            @map("payment_method")
   status           String
   transactionDate  DateTime          @default(now()) @map("transaction_date")

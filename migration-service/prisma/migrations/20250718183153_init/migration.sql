@@ -42,7 +42,7 @@ CREATE TABLE "menus" (
 -- CreateTable
 CREATE TABLE "transactions" (
     "id" TEXT NOT NULL,
-    "total_amount" DOUBLE PRECISION NOT NULL,
+    "totalAmount" DOUBLE PRECISION NOT NULL,
     "payment_method" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "transaction_date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

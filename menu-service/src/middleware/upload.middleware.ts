@@ -3,7 +3,8 @@ import path from 'path';
 import fs from 'fs';
 
 // Pastikan direktori 'uploads' ada
-const uploadDir = 'uploads/';
+const uploadDir = path.join(__dirname, '../../uploads/')
+// const uploadDir = 'uploads/';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir);
 }

@@ -12,6 +12,7 @@ const ROUTING_KEY_PAYMENT_UPDATE = 'transaction.payment.updated';
 export const handleMidtransWebhook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const notification = req.body;
+        console.log(notification);
 
         // Validasi Signature Key
         const signatureKey = crypto
